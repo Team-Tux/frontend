@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react'
 import {
   CTable, CTableBody, CTableHead, CTableHeaderCell,
   CTableRow, CTableDataCell, CCollapse, CDropdown, CDropdownToggle,
-  CDropdownMenu, CDropdownItem, CButton, CCol
+  CDropdownMenu, CDropdownItem, CDropdownDivider, CButton, CCol
 } from '@coreui/react'
 import { useNavigate } from 'react-router-dom'
 
@@ -20,12 +20,26 @@ export default function TableExample() {
     fetch('/incidents.json')
       .then(r => r.json())
       .then(data => {
-        // Merge local incidents with fetched data
-        const mergedIncidents = [...localIncidents, ...data]
-        setRows(mergedIncidents)
+        // Merge local incidents with fetched data, prioritizing local updates
+        const fetchedArray = Array.isArray(data) ? data : []
+        const merged = [...fetchedArray]
+        
+        // Update with local changes or add new local incidents
+        localIncidents.forEach(localIncident => {
+          const idx = merged.findIndex(it => String(it.id) === String(localIncident.id))
+          if (idx !== -1) {
+            // Replace with local version (it has the updated status/delegate)
+            merged[idx] = localIncident
+          } else {
+            // Add new local incident
+            merged.push(localIncident)
+          }
+        })
+        
+        setRows(merged)
         
         // Extract all unique delegates from the merged data
-        const uniqueDelegates = Array.from(new Set(mergedIncidents.map(r => r.delegated_to).filter(Boolean)))
+        const uniqueDelegates = Array.from(new Set(merged.map(r => r.delegated_to).filter(Boolean)))
         setAllDelegates(['All', ...uniqueDelegates.sort()])
       })
       .catch(err => {
@@ -93,14 +107,57 @@ export default function TableExample() {
 
   // mark an incident as done
   const markDone = (id) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'done' } : r))
+    setRows(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, status: 'done' } : r)
+      
+      // Update localStorage
+      try {
+        const local = JSON.parse(localStorage.getItem('incidents') || '[]')
+        const incident = updated.find(r => r.id === id)
+        const idx = local.findIndex(it => String(it.id) === String(id))
+        
+        if (idx !== -1) {
+          local[idx] = incident
+        } else {
+          local.push(incident)
+        }
+        
+        localStorage.setItem('incidents', JSON.stringify(local))
+      } catch (e) {
+        console.error('Failed to persist status change', e)
+      }
+      
+      return updated
+    })
 
     // TODO: fetch done status to the backend
   }
 
   // change status of an incident
   const changeStatus = (id, newStatus) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
+    setRows(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, status: newStatus } : r)
+      
+      // Update localStorage
+      try {
+        const local = JSON.parse(localStorage.getItem('incidents') || '[]')
+        const incident = updated.find(r => r.id === id)
+        const idx = local.findIndex(it => String(it.id) === String(id))
+        
+        if (idx !== -1) {
+          local[idx] = incident
+        } else {
+          local.push(incident)
+        }
+        
+        localStorage.setItem('incidents', JSON.stringify(local))
+      } catch (e) {
+        console.error('Failed to persist status change', e)
+      }
+      
+      return updated
+    })
+    
     // Force close dropdown by clicking outside
     setTimeout(() => {
       document.body.click()
@@ -111,7 +168,29 @@ export default function TableExample() {
 
   // delegate an incident to an organization/user
   const delegateTo = (id, delegated) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, delegated_to: delegated } : r))
+    setRows(prev => {
+      const updated = prev.map(r => r.id === id ? { ...r, delegated_to: delegated } : r)
+      
+      // Update localStorage
+      try {
+        const local = JSON.parse(localStorage.getItem('incidents') || '[]')
+        const incident = updated.find(r => r.id === id)
+        const idx = local.findIndex(it => String(it.id) === String(id))
+        
+        if (idx !== -1) {
+          local[idx] = incident
+        } else {
+          local.push(incident)
+        }
+        
+        localStorage.setItem('incidents', JSON.stringify(local))
+      } catch (e) {
+        console.error('Failed to persist delegation change', e)
+      }
+      
+      return updated
+    })
+    
     // Force close dropdown by clicking outside
     setTimeout(() => {
       document.body.click()
@@ -314,7 +393,7 @@ export default function TableExample() {
                             {d}
                           </CDropdownItem>
                         ))}
-                        <CDropdownItem divider />
+                        <CDropdownDivider />
                         <CDropdownItem
                           onClick={(e) => {
                             e.stopPropagation();

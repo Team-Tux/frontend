@@ -7,6 +7,7 @@ import helper from "./views/helper/Helper";
 const threeD = React.lazy(() => import('./views/3d/threeD'))
 const incidents = React.lazy(() => import('./views/incidents/Incidents'))
 const CreateIncident = React.lazy(() => import('./views/incidents/CreateIncident'))
+const IncidentDetails = React.lazy(() => import('./views/incidents/IncidentDetails'))
 
 const Colors = React.lazy(() => import("./views/theme/colors/Colors"));
 const Typography = React.lazy(
@@ -88,6 +89,7 @@ const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/incidents', name: 'Incidents', element: incidents },
   { path: '/incidents/create', name: 'Create Incident', element: CreateIncident },
+  { path: '/incidents/:id', name: 'Incident Details', element: IncidentDetails },
   { path: '/2d', name: '2D', element: TwoD },
   { path: '/3d', name: '3D', element: threeD },
   { path: '/helper', name: 'Helper', element: helper },

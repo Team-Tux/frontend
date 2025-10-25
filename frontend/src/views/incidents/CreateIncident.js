@@ -15,6 +15,7 @@ import {
   CDropdownToggle,
   CDropdownMenu,
   CDropdownItem,
+  CDropdownDivider,
 } from '@coreui/react'
 import { useNavigate } from 'react-router-dom'
 
@@ -187,7 +188,7 @@ export default function CreateIncident() {
                       <CDropdownItem onClick={() => selectDelegate('')}>
                         None
                       </CDropdownItem>
-                      <CDropdownItem divider />
+                      <CDropdownDivider />
                       {allDelegates.map(d => (
                         <CDropdownItem
                           key={d}
@@ -197,7 +198,7 @@ export default function CreateIncident() {
                           {d}
                         </CDropdownItem>
                       ))}
-                      <CDropdownItem divider />
+                      <CDropdownDivider />
                       <CDropdownItem onClick={addNewDelegate}>
                         + Add new delegate
                       </CDropdownItem>
