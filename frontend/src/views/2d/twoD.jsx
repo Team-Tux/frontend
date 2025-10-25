@@ -8,9 +8,21 @@ import { CContainer } from "@coreui/react";
 const TwoD = () => {
   const fencePoint = [9.6861753, 50.5652165];
   const GEOFENCE = turf.circle(fencePoint, 15, { units: "miles" });
+  const [selectedId, setSelectedId] = useState(-1);
+  const points = [
+    { id: 0, cord: [9.6861753, 50.5652165], radius: 30 },
+    { id: 1, cord: [9.704481903105375, 50.561469999275005], radius: 60 },
+  ];
   const pointCoords = [9.6861753, 50.5652165];
 
   // Create a 500 meter radius circle around that point
+  const circles = useMemo(() => {
+    const circleFeatures = points.map((point) =>
+      turf.circle(point.cord, point.radius, { units: "meters" })
+    );
+    return turf.featureCollection(circleFeatures);
+  }, [points]);
+
   const circle = useMemo(
     () => turf.circle(pointCoords, 20, { units: "meters" }),
     [pointCoords]
@@ -22,17 +34,15 @@ const TwoD = () => {
   });
   const geojson = {
     type: "FeatureCollection",
-    features: [
-      {
+    features: points.map((item) => {
+      return {
         type: "Feature",
-        geometry: { type: "Point", coordinates: pointCoords },
-      },
-      // {
-      //   type: "Feature",
-      //   geometry: { type: "Point", coordinates: [9.680672, 50.559] },
-      // },
-    ],
+        geometry: { type: "Point", coordinates: item.cord },
+      };
+    }),
   };
+
+  // console.log("geojson", geojson);
   const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3; // Earth's radius in meters
     const φ1 = (lat1 * Math.PI) / 180;
@@ -50,14 +60,25 @@ const TwoD = () => {
   };
   const handleClick = (e) => {
     let distToPoint = -1;
-    [pointCoords].forEach((item) => {
+    points.forEach((item) => {
       distToPoint = getDistanceInMeters(
         e.lngLat.lat,
         e.lngLat.lng,
-        item[1],
-        item[0]
+        item.cord[1],
+        item.cord[0]
       );
+      if (distToPoint < item.radius) {
+        if (selectedId != item.id) {
+          setViewState({
+            latitude: item.cord[1],
+            longitude: item.cord[0],
+            zoom: 18,
+          });
+          setSelectedId(item.id);
+        }
+      }
       console.log("DISTANCE", distToPoint);
+      console.log("DISTANCE", e.lngLat);
     });
   };
   const layerStyle = {
@@ -102,7 +123,7 @@ const TwoD = () => {
     ({ viewState }) => {
       const newCenter = [viewState.longitude, viewState.latitude];
       if (turf.booleanPointInPolygon(newCenter, GEOFENCE)) {
-        console.log("Inside geofence");
+        // console.log("Inside geofence");
         setViewState({
           ...viewState,
           longitude: newCenter[0],
@@ -123,7 +144,7 @@ const TwoD = () => {
         mapStyle="https://sgx.geodatenzentrum.de/gdz_basemapde_vektor/styles/bm_web_top.json"
       >
         {/* Circle polygon source */}
-        <Source id="circle" type="geojson" data={circle}>
+        <Source id="circles" type="geojson" data={circles}>
           <Layer {...circleFillLayer} />
           <Layer {...circleOutlineLayer} />
         </Source>
