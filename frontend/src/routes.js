@@ -2,7 +2,7 @@ import React from "react";
 
 const Dashboard = React.lazy(() => import("./views/dashboard/Dashboard"));
 import TwoD from "./views/2d/twoD";
-const threeD = React.lazy(() => import("./views/3d/threeD"));
+const ThreeDMap = React.lazy(() => import("./views/3d/ThreeDMap"));
 const incidents = React.lazy(() => import("./views/incidents/Incidents"));
 
 const Colors = React.lazy(() => import("./views/theme/colors/Colors"));
@@ -85,7 +85,7 @@ const routes = [
   { path: "/", exact: true, name: "Home" },
   { path: "/incidents", name: "Incidents", element: incidents },
   { path: "/2d", name: "2D", element: TwoD },
-  { path: "/3d", name: "3D", element: threeD },
+  { path: "/3d", name: "3D", element: ThreeDMap },
   { path: "/theme", name: "Theme", element: Colors, exact: true },
   { path: "/theme/colors", name: "Colors", element: Colors },
   { path: "/theme/typography", name: "Typography", element: Typography },
