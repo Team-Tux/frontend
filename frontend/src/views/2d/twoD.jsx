@@ -1,4 +1,3 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Layer, Map, Source } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
@@ -189,9 +188,45 @@ const TwoD = ({}) => {
     },
     [GEOFENCE],
   );
+  const [layerVisibility, setLayerVisibility] = useState({
+    points: true,
+    sensors: true,
+    helpers: true,
+    circles: true,
+  });
 
   return (
     <CContainer style={{ width: "100%", height: "80vh" }}>
+      <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
+        <button
+          onClick={() =>
+            setLayerVisibility((prev) => ({ ...prev, points: !prev.points }))
+          }
+        >
+          {layerVisibility.points ? "Hide Points" : "Show Points"}
+        </button>
+        <button
+          onClick={() =>
+            setLayerVisibility((prev) => ({ ...prev, sensors: !prev.sensors }))
+          }
+        >
+          {layerVisibility.sensors ? "Hide Sensors" : "Show Sensors"}
+        </button>
+        <button
+          onClick={() =>
+            setLayerVisibility((prev) => ({ ...prev, helpers: !prev.helpers }))
+          }
+        >
+          {layerVisibility.helpers ? "Hide Helpers" : "Show Helpers"}
+        </button>
+        <button
+          onClick={() =>
+            setLayerVisibility((prev) => ({ ...prev, circles: !prev.circles }))
+          }
+        >
+          {layerVisibility.circles ? "Hide Circles" : "Show Circles"}
+        </button>
+      </div>
       <Map
         {...viewState}
         onMove={onMove}
@@ -200,20 +235,30 @@ const TwoD = ({}) => {
         style={{ width: "100%", height: "100%" }}
         mapStyle="https://sgx.geodatenzentrum.de/gdz_basemapde_vektor/styles/bm_web_top.json"
       >
-        {/* Circle polygon source */}
-        <Source id="circles" type="geojson" data={circles}>
-          <Layer {...circleFillLayer} />
-          <Layer {...circleOutlineLayer} />
-        </Source>
-        <Source id="points" type="geojson" data={incidentsJson}>
-          <Layer {...layerStylePoints} />
-        </Source>
-        <Source id="sensors" type="geojson" data={sensorsJson}>
-          <Layer {...layerStyleSensors} />
-        </Source>
-        <Source id="helpers" type="geojson" data={helpersJson}>
-          <Layer {...layerStyleHelper} />
-        </Source>
+        {layerVisibility.circles && (
+          <Source id="circles" type="geojson" data={circles}>
+            <Layer {...circleFillLayer} />
+            <Layer {...circleOutlineLayer} />
+          </Source>
+        )}
+
+        {layerVisibility.points && (
+          <Source id="points" type="geojson" data={incidentsJson}>
+            <Layer {...layerStylePoints} />
+          </Source>
+        )}
+
+        {layerVisibility.sensors && (
+          <Source id="sensors" type="geojson" data={sensorsJson}>
+            <Layer {...layerStyleSensors} />
+          </Source>
+        )}
+
+        {layerVisibility.helpers && (
+          <Source id="helpers" type="geojson" data={helpersJson}>
+            <Layer {...layerStyleHelper} />
+          </Source>
+        )}
       </Map>
     </CContainer>
   );

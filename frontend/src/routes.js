@@ -3,8 +3,8 @@ import React from "react";
 const Dashboard = React.lazy(() => import("./views/dashboard/Dashboard"));
 import TwoD from "./views/2d/twoD";
 import helper from "./views/helper/Helper";
+import threeD from './views/3d/testthreeD';
 
-const threeD = React.lazy(() => import('./views/3d/threeD'))
 const incidents = React.lazy(() => import('./views/incidents/Incidents'))
 const CreateIncident = React.lazy(() => import('./views/incidents/CreateIncident'))
 
