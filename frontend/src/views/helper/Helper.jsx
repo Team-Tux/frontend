@@ -32,7 +32,32 @@ function Helper() {
   const [error, setError] = useState(null);
   const [mode, setMode] = useState("organization"); // 'organization' | 'assigned' | 'done'
   const [sortOption, setSortOption] = useState("reported_desc");
+  const [delegateMap, setDelegateMap] = useState({}); // Map delegate id to name
   const navigate = useNavigate()
+
+  // Fetch delegates for mapping
+  useEffect(() => {
+    fetch('/api/v1/delegates/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Fetched delegates from API:', data)
+        const fetchedDelegates = Array.isArray(data) ? data : []
+        
+        // Create a map of id -> name for easy lookup
+        const map = {}
+        fetchedDelegates.forEach(d => {
+          map[d.id] = d.name
+        })
+        setDelegateMap(map)
+      })
+      .catch(err => {
+        console.error('Error fetching delegates:', err)
+      })
+  }, [])
 
   useEffect(() => {
     // set sensible default sort when mode changes
@@ -53,8 +78,7 @@ function Helper() {
         if (!mounted) return;
         setUser(u);
 
-        // fetch incidents and merge with localStorage (for status updates)
-        const local = JSON.parse(localStorage.getItem('incidents') || '[]');
+        // fetch incidents from API
         const resp = await fetch("/api/v1/incidents/", {
           headers: {
             'Accept': 'application/json'
@@ -63,24 +87,10 @@ function Helper() {
         const fetched = await resp.json();
         if (!mounted) return;
         
-        // merge local and fetched data, prioritizing local updates
         const fetchedArray = Array.isArray(fetched) ? fetched : [];
-        const merged = [...fetchedArray];
-        
-        // update with local changes or add new local incidents
-        local.forEach(localIncident => {
-          const idx = merged.findIndex(it => String(it.id) === String(localIncident.id));
-          if (idx !== -1) {
-            // replace with local version (it has the updated status)
-            merged[idx] = localIncident;
-          } else {
-            // add new local incident
-            merged.push(localIncident);
-          }
-        });
         
         const org = u.organization || "";
-        const filtered = merged.filter((it) => String(it.delegated_to).toLowerCase() === String(org).toLowerCase());
+        const filtered = fetchedArray.filter((it) => String(it.delegated_to).toLowerCase() === String(org).toLowerCase());
         setTasks(filtered);
       } catch (err) {
         if (!mounted) return;
@@ -96,6 +106,12 @@ function Helper() {
       mounted = false;
     };
   }, []);
+
+  // Helper function to get delegate name from id
+  const getDelegateName = (delegateId) => {
+    if (!delegateId) return 'Unassigned'
+    return delegateMap[delegateId] || `ID: ${delegateId}`
+  }
 
   return (
     <div>

@@ -10,14 +10,38 @@ export default function TableExample() {
   const navigate = useNavigate()
   const [openRow, setOpenRow] = useState(null)
   const [rows, setRows] = useState([])
-  const [allDelegates, setAllDelegates] = useState(['All']) // Store all delegates separately
+  const [allDelegates, setAllDelegates] = useState([]) // Store all delegates with {id, name}
+  const [delegateMap, setDelegateMap] = useState({}) // Map delegate id to name
   const [incidentImages, setIncidentImages] = useState({}) // Store images for each incident
   const dropdownRefs = useRef({}) // Store refs to dropdowns
 
+  // Fetch delegates from API
   useEffect(() => {
-    // First, try to load from localStorage
-    const localIncidents = JSON.parse(localStorage.getItem('incidents') || '[]')
-    
+    fetch('/api/v1/delegates/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Fetched delegates from API:', data)
+        const fetchedDelegates = Array.isArray(data) ? data : []
+        setAllDelegates(fetchedDelegates)
+        
+        // Create a map of id -> name for easy lookup
+        const map = {}
+        fetchedDelegates.forEach(d => {
+          map[d.id] = d.name
+        })
+        setDelegateMap(map)
+        console.log('Delegate map:', map)
+      })
+      .catch(err => {
+        console.error('Error fetching delegates:', err)
+      })
+  }, [])
+
+  useEffect(() => {
     // Fetch incidents from API (via Vite proxy to avoid CORS)
     fetch('/api/v1/incidents/', {
       headers: {
@@ -34,43 +58,25 @@ export default function TableExample() {
         console.log('Type of data:', typeof data)
         console.log('Is array?', Array.isArray(data))
         
-        // Merge local incidents with fetched data, prioritizing local updates
         const fetchedArray = Array.isArray(data) ? data : []
-        const merged = [...fetchedArray]
-        
-        // Update with local changes or add new local incidents
-        localIncidents.forEach(localIncident => {
-          const idx = merged.findIndex(it => String(it.id) === String(localIncident.id))
-          if (idx !== -1) {
-            // Replace with local version (it has the updated status/delegate)
-            merged[idx] = localIncident
-          } else {
-            // Add new local incident
-            merged.push(localIncident)
-          }
-        })
-        
-        setRows(merged)
-        
-        // Extract all unique delegates from the merged data
-        const uniqueDelegates = Array.from(new Set(merged.map(r => r.delegated_to).filter(Boolean)))
-        setAllDelegates(['All', ...uniqueDelegates.sort()])
+        setRows(fetchedArray)
       })
       .catch(err => {
         console.error('Error fetching incidents:', err)
-        // If fetch fails, just use local incidents
-        if (localIncidents.length > 0) {
-          setRows(localIncidents)
-          const uniqueDelegates = Array.from(new Set(localIncidents.map(r => r.delegated_to).filter(Boolean)))
-          setAllDelegates(['All', ...uniqueDelegates.sort()])
-        }
+        setRows([])
       })
   }, [])
 
   // filter / sort state
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'open' | 'in_progress' | 'done'
-  const [delegateFilter, setDelegateFilter] = useState('All') // 'All' or delegated_to value
+  const [delegateFilter, setDelegateFilter] = useState('All') // 'All' or delegate id
   const [orderBy, setOrderBy] = useState('reported') // 'reported' | 'priority' | 'status'
+
+  // Helper function to get delegate name from id
+  const getDelegateName = (delegateId) => {
+    if (!delegateId) return 'Unassigned'
+    return delegateMap[delegateId] || `ID: ${delegateId}`
+  }
 
   const filteredRows = useMemo(() => {
     let res = Array.isArray(rows) ? rows.slice() : []
@@ -83,7 +89,7 @@ export default function TableExample() {
     }
 
     if (delegateFilter && delegateFilter !== 'All') {
-      res = res.filter(r => r.delegated_to === delegateFilter)
+      res = res.filter(r => String(r.delegated_to) === String(delegateFilter))
     }
 
     // sort
@@ -121,110 +127,124 @@ export default function TableExample() {
 
   // mark an incident as done
   const markDone = (id) => {
-    setRows(prev => {
-      const updated = prev.map(r => r.id === id ? { ...r, status: 'done' } : r)
-      
-      // Update localStorage
-      try {
-        const local = JSON.parse(localStorage.getItem('incidents') || '[]')
-        const incident = updated.find(r => r.id === id)
-        const idx = local.findIndex(it => String(it.id) === String(id))
-        
-        if (idx !== -1) {
-          local[idx] = incident
-        } else {
-          local.push(incident)
-        }
-        
-        localStorage.setItem('incidents', JSON.stringify(local))
-      } catch (e) {
-        console.error('Failed to persist status change', e)
-      }
-      
-      return updated
-    })
+    setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'done' } : r))
 
-    // TODO: fetch done status to the backend
+    // Send status update to backend
+    fetch(`/api/v1/incidents/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: 'done' }),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update status')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident status:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident status:', error)
+    })
   }
 
   // change status of an incident
   const changeStatus = (id, newStatus) => {
-    setRows(prev => {
-      const updated = prev.map(r => r.id === id ? { ...r, status: newStatus } : r)
-      
-      // Update localStorage
-      try {
-        const local = JSON.parse(localStorage.getItem('incidents') || '[]')
-        const incident = updated.find(r => r.id === id)
-        const idx = local.findIndex(it => String(it.id) === String(id))
-        
-        if (idx !== -1) {
-          local[idx] = incident
-        } else {
-          local.push(incident)
-        }
-        
-        localStorage.setItem('incidents', JSON.stringify(local))
-      } catch (e) {
-        console.error('Failed to persist status change', e)
-      }
-      
-      return updated
-    })
+    setRows(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
     
     // Force close dropdown by clicking outside
     setTimeout(() => {
       document.body.click()
     }, 0)
     
-    // TODO: fetch status change to the backend
+    // Send status update to backend
+    fetch(`/api/v1/incidents/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update status')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident status:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident status:', error)
+    })
   }
 
   // delegate an incident to an organization/user
-  const delegateTo = (id, delegated) => {
-    setRows(prev => {
-      const updated = prev.map(r => r.id === id ? { ...r, delegated_to: delegated } : r)
-      
-      // Update localStorage
-      try {
-        const local = JSON.parse(localStorage.getItem('incidents') || '[]')
-        const incident = updated.find(r => r.id === id)
-        const idx = local.findIndex(it => String(it.id) === String(id))
-        
-        if (idx !== -1) {
-          local[idx] = incident
-        } else {
-          local.push(incident)
-        }
-        
-        localStorage.setItem('incidents', JSON.stringify(local))
-      } catch (e) {
-        console.error('Failed to persist delegation change', e)
-      }
-      
-      return updated
-    })
+  const delegateTo = (id, delegateId) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, delegated_to: delegateId } : r))
     
     // Force close dropdown by clicking outside
     setTimeout(() => {
       document.body.click()
     }, 0)
-    
-    // Add new delegate to the list if it doesn't exist
-    if (!allDelegates.includes(delegated)) {
-      setAllDelegates(prev => ['All', ...Array.from(new Set([...prev.filter(d => d !== 'All'), delegated])).sort()])
-    }
 
-    // TODO: fetch delegation to the backend
+    // Send delegation update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/delegated_to?delegated_to=${delegateId}`, {
+      method: 'PATCH',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update delegation')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident delegation:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident delegation:', error)
+    })
   }
 
-  // add new delegate option
-  const addNewDelegate = () => {
-    const newDelegate = prompt("Enter name of new delegate/organization:")
-    if (newDelegate && newDelegate.trim()) {
-      return newDelegate.trim()
+  // Create a new delegate
+  const createNewDelegate = async () => {
+    const newDelegateName = prompt("Enter name of new delegate/organization:")
+    if (!newDelegateName || !newDelegateName.trim()) {
+      return null
     }
-    return null
+
+    try {
+      const response = await fetch('/api/v1/delegates/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newDelegateName.trim() }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create delegate')
+      }
+
+      const newDelegate = await response.json()
+      console.log('Successfully created new delegate:', newDelegate)
+      
+      // Update local state with new delegate
+      setAllDelegates(prev => [...prev, newDelegate].sort((a, b) => a.name.localeCompare(b.name)))
+      setDelegateMap(prev => ({ ...prev, [newDelegate.id]: newDelegate.name }))
+      
+      return newDelegate.id
+    } catch (error) {
+      console.error('Error creating new delegate:', error)
+      alert('Failed to create new delegate. Please try again.')
+      return null
+    }
   }
 
   // Fetch images for a specific incident
@@ -335,12 +355,15 @@ export default function TableExample() {
             <div className="btn-row">
             <CDropdown>
               <CDropdownToggle color="secondary" className="btn-sm" >
-                {delegateFilter}
+                {delegateFilter === 'All' ? 'All' : getDelegateName(delegateFilter)}
               </CDropdownToggle>
               <CDropdownMenu>
+                <CDropdownItem onClick={() => setDelegateFilter('All')} active={delegateFilter === 'All'}>
+                  All
+                </CDropdownItem>
                 {allDelegates.map(d => (
-                  <CDropdownItem key={d} onClick={() => setDelegateFilter(d)} active={delegateFilter === d}>
-                    {d}
+                  <CDropdownItem key={d.id} onClick={() => setDelegateFilter(d.id)} active={delegateFilter === d.id}>
+                    {d.name}
                   </CDropdownItem>
                 ))}
               </CDropdownMenu>
@@ -402,7 +425,7 @@ export default function TableExample() {
                 <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>
                   {r.status === 'in_progress' ? 'in progress' : r.status}
                 </CTableDataCell>
-                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{r.delegated_to}</CTableDataCell>
+                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{getDelegateName(r.delegated_to)}</CTableDataCell>
                 <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{r.priority}</CTableDataCell>
                 <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>
                   <CCol className="d-flex justify-content-center">
@@ -443,22 +466,22 @@ export default function TableExample() {
                         Delegate to
                       </CDropdownToggle>
                       <CDropdownMenu>
-                        {allDelegates.filter(d => d !== 'All').map(d => (
+                        {allDelegates.map(d => (
                           <CDropdownItem
-                            key={d}
-                            onClick={(e) => {  delegateTo(r.id, d); e.stopPropagation(); }}
-                            active={d === r.delegated_to}
+                            key={d.id}
+                            onClick={(e) => {  delegateTo(r.id, d.id); e.stopPropagation(); }}
+                            active={d.id === r.delegated_to}
                           >
-                            {d}
+                            {d.name}
                           </CDropdownItem>
                         ))}
                         <CDropdownDivider />
                         <CDropdownItem
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            const newDelegate = addNewDelegate();
-                            if (newDelegate) {
-                              delegateTo(r.id, newDelegate);
+                            const newDelegateId = await createNewDelegate();
+                            if (newDelegateId) {
+                              delegateTo(r.id, newDelegateId);
                             }
                           }}
                         >
@@ -507,7 +530,7 @@ export default function TableExample() {
                   <CCollapse visible={isOpen}>
                     <div className="p-3">
                       <div><b>Description:</b> {r.description}</div>
-                      <div><b>Delegated to:</b> {r.delegated_to}</div>
+                      <div><b>Delegated to:</b> {getDelegateName(r.delegated_to)}</div>
                       <div><b>Reported:</b> {new Date(r.reported_at).toLocaleString()}</div>
                       <div><b>Coords:</b> {r.lat}, {r.lon}</div>
                       

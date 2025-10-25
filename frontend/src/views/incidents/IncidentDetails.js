@@ -11,36 +11,58 @@ export default function IncidentDetails() {
   const [existingImages, setExistingImages] = useState([])
   const [uploadedImages, setUploadedImages] = useState([])
   const [loadingImages, setLoadingImages] = useState(false)
+  const [delegateMap, setDelegateMap] = useState({}) // Map delegate id to name
   const fileInputRef = useRef(null)
+
+  // Fetch delegates for mapping
+  useEffect(() => {
+    fetch('/api/v1/delegates/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Fetched delegates from API:', data)
+        const fetchedDelegates = Array.isArray(data) ? data : []
+        
+        // Create a map of id -> name for easy lookup
+        const map = {}
+        fetchedDelegates.forEach(d => {
+          map[d.id] = d.name
+        })
+        setDelegateMap(map)
+      })
+      .catch(err => {
+        console.error('Error fetching delegates:', err)
+      })
+  }, [])
 
   useEffect(() => {
     let mounted = true
     setLoading(true)
     setError(null)
 
-    const local = JSON.parse(localStorage.getItem('incidents') || '[]')
-    fetch('/incidents.json')
-      .then((r) => r.json())
-      .then((fetched) => {
+    fetch(`/api/v1/incidents/${id}`)
+      .then((r) => {
+        if (!r.ok) {
+          throw new Error('Incident not found')
+        }
+        return r.json()
+      })
+      .then((data) => {
         if (!mounted) return
-        const merged = [...local, ...Array.isArray(fetched) ? fetched : []]
-        const found = merged.find((it) => String(it.id) === String(id))
-        setIncident(found || null)
+        setIncident(data)
         
         // Fetch existing images for these coordinates if incident found
-        if (found) {
-          fetchImagesForCoordinates(found.lat, found.lon)
+        if (data) {
+          fetchImagesForCoordinates(data.lat, data.lon)
         }
       })
       .catch((err) => {
         console.error(err)
         if (!mounted) return
-        const foundLocal = local.find((it) => String(it.id) === String(id))
-        if (foundLocal) {
-          setIncident(foundLocal)
-          fetchImagesForCoordinates(foundLocal.lat, foundLocal.lon)
-        }
-        else setError('Incident not found')
+        setError('Incident not found')
       })
       .finally(() => { if (mounted) setLoading(false) })
 
@@ -92,21 +114,35 @@ export default function IncidentDetails() {
   if (error) return <div style={{ color: 'red' }}>{error}</div>
   if (!incident) return <div>Incident not found</div>
 
+  // Helper function to get delegate name from id
+  const getDelegateName = (delegateId) => {
+    if (!delegateId) return 'Unassigned'
+    return delegateMap[delegateId] || `ID: ${delegateId}`
+  }
+
   const updateStatus = (newStatus) => {
     setIncident((prev) => ({ ...(prev || {}), status: newStatus }))
-    try {
-      const local = JSON.parse(localStorage.getItem('incidents') || '[]')
-      const idx = local.findIndex((it) => String(it.id) === String(id))
-      if (idx !== -1) {
-        local[idx] = { ...local[idx], status: newStatus }
-      } else {
-        // push updated incident
-        local.push({ ...(incident || {}), status: newStatus })
+    
+    // Send status update to backend
+    fetch(`/api/v1/incidents/${id}`, {
+      method: 'PATCH',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ status: newStatus }),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update status')
       }
-      localStorage.setItem('incidents', JSON.stringify(local))
-    } catch (e) {
-      console.error('Failed to persist status change', e)
-    }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident status:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident status:', error)
+    })
   }
 
   const handleImageUpload = (e) => {
@@ -242,7 +278,7 @@ export default function IncidentDetails() {
           </div>
           <CCardTitle>{incident.title}</CCardTitle>
           <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Status:</b> {incident.status == "in_progress" ? "In Progress": incident.status}</div>
-          <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Delegated to:</b> {incident.delegated_to}</div>
+          <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Delegated to:</b> {getDelegateName(incident.delegated_to)}</div>
           <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Priority:</b> {incident.priority}</div>
           <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Reported at:</b> {incident.reported_at ? new Date(incident.reported_at).toLocaleString() : '—'}</div>
           <CCardText>{incident.description}</CCardText>
