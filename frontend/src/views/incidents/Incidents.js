@@ -11,15 +11,29 @@ export default function TableExample() {
   const [openRow, setOpenRow] = useState(null)
   const [rows, setRows] = useState([])
   const [allDelegates, setAllDelegates] = useState(['All']) // Store all delegates separately
+  const [incidentImages, setIncidentImages] = useState({}) // Store images for each incident
   const dropdownRefs = useRef({}) // Store refs to dropdowns
 
   useEffect(() => {
     // First, try to load from localStorage
     const localIncidents = JSON.parse(localStorage.getItem('incidents') || '[]')
     
-    fetch('/incidents.json')
-      .then(r => r.json())
+    // Fetch incidents from API (via Vite proxy to avoid CORS)
+    fetch('/api/v1/incidents/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => {
+        console.log('API Response status:', r.status)
+        console.log('API Response headers:', r.headers)
+        return r.json()
+      })
       .then(data => {
+        console.log('Fetched incidents from API:', data)
+        console.log('Type of data:', typeof data)
+        console.log('Is array?', Array.isArray(data))
+        
         // Merge local incidents with fetched data, prioritizing local updates
         const fetchedArray = Array.isArray(data) ? data : []
         const merged = [...fetchedArray]
@@ -213,6 +227,51 @@ export default function TableExample() {
     return null
   }
 
+  // Fetch images for a specific incident
+  const fetchImagesForIncident = async (incidentId, lat, lon) => {
+    console.log('🔍 Fetching images for incident:', incidentId, 'at coordinates:', { lat, lon })
+    
+    try {
+      // TODO: Replace with actual API call
+      // const response = await fetch(`/api/images?lat=${lat}&lon=${lon}`)
+      // const images = await response.json()
+      
+      // Mock existing images with file paths (simulating API response)
+      const mockExistingImages = [
+        {
+          id: `${incidentId}-img-1`,
+          name: 'photo_1.jpg',
+          filePath: '/uploads/images/photo_1.jpg',
+          uploadedAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+        {
+          id: `${incidentId}-img-2`,
+          name: 'photo_2.jpg',
+          filePath: '/uploads/images/photo_2.jpg',
+          uploadedAt: new Date(Date.now() - 172800000).toISOString(),
+        }
+      ]
+      
+      console.log('✅ Found images for incident:', incidentId, mockExistingImages.length)
+      setIncidentImages(prev => ({ ...prev, [incidentId]: mockExistingImages }))
+      
+    } catch (error) {
+      console.error('❌ Error fetching images:', error)
+      setIncidentImages(prev => ({ ...prev, [incidentId]: [] }))
+    }
+  }
+
+  // Handle row toggle and fetch images if needed
+  const handleRowToggle = (incidentId, lat, lon) => {
+    const newOpenRow = openRow === incidentId ? null : incidentId
+    setOpenRow(newOpenRow)
+    
+    // Fetch images when opening a row if not already fetched
+    if (newOpenRow && !incidentImages[incidentId]) {
+      fetchImagesForIncident(incidentId, lat, lon)
+    }
+  }
+
   return (
     
     <div>
@@ -326,7 +385,7 @@ export default function TableExample() {
           return (
             <React.Fragment key={r.id}>
               <CTableRow
-                onClick={() => setOpenRow(isOpen ? null : r.id)}
+                onClick={() => handleRowToggle(r.id, r.lat, r.lon)}
                 color={getBg(isDone ? 'done' : r.priority)}
                 style={{ cursor: 'pointer' }}
               >
@@ -451,6 +510,80 @@ export default function TableExample() {
                       <div><b>Delegated to:</b> {r.delegated_to}</div>
                       <div><b>Reported:</b> {new Date(r.reported_at).toLocaleString()}</div>
                       <div><b>Coords:</b> {r.lat}, {r.lon}</div>
+                      
+                      {/* Images Section */}
+                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--cui-border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <b>📷 Images:</b>
+                          {incidentImages[r.id] && (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--cui-text-secondary)' }}>
+                              {incidentImages[r.id].length} image(s)
+                            </span>
+                          )}
+                        </div>
+                        
+                        {!incidentImages[r.id] ? (
+                          <div style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)', fontStyle: 'italic' }}>
+                            Loading images...
+                          </div>
+                        ) : incidentImages[r.id].length > 0 ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.5rem' }}>
+                            {incidentImages[r.id].map((img) => (
+                              <div 
+                                key={img.id}
+                                style={{ 
+                                  border: '1px solid var(--cui-border-color)', 
+                                  borderRadius: '4px', 
+                                  padding: '0.5rem',
+                                  backgroundColor: 'var(--cui-secondary-bg)',
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  console.log('🖼️ Image clicked:', img)
+                                }}
+                              >
+                                <div style={{ 
+                                  height: '80px', 
+                                  backgroundColor: 'var(--cui-body-bg)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '4px',
+                                  marginBottom: '0.25rem'
+                                }}>
+                                  <span style={{ fontSize: '2rem' }}>🖼️</span>
+                                </div>
+                                <div style={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {img.name}
+                                </div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--cui-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {img.filePath}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)', fontStyle: 'italic' }}>
+                            No images found for this location
+                          </div>
+                        )}
+                        
+                        <CButton 
+                          color="link" 
+                          size="sm"
+                          style={{ marginTop: '0.5rem', padding: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/incidents/${r.id}`)
+                          }}
+                        >
+                          View full details →
+                        </CButton>
+                      </div>
                     </div>
                   </CCollapse>
                 </CTableDataCell>
