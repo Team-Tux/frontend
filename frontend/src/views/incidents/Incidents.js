@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react'
+import React, { useEffect, useState, useMemo, useRef } from 'react'
 import {
   CTable, CTableBody, CTableHead, CTableHeaderCell,
   CTableRow, CTableDataCell, CCollapse, CDropdown, CDropdownToggle,
@@ -8,11 +8,18 @@ import {
 export default function TableExample() {
   const [openRow, setOpenRow] = useState(null)
   const [rows, setRows] = useState([])
+  const [allDelegates, setAllDelegates] = useState(['All']) // Store all delegates separately
+  const dropdownRefs = useRef({}) // Store refs to dropdowns
 
   useEffect(() => {
     fetch('/incidents.json')
       .then(r => r.json())
-      .then(data => setRows(data))
+      .then(data => {
+        setRows(data)
+        // Extract all unique delegates from the initial data
+        const uniqueDelegates = Array.from(new Set(data.map(r => r.delegated_to).filter(Boolean)))
+        setAllDelegates(['All', ...uniqueDelegates.sort()])
+      })
       .catch(err => console.error('Error fetching incidents:', err))
   }, [])
 
@@ -20,12 +27,6 @@ export default function TableExample() {
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'open' | 'in_progress' | 'done'
   const [delegateFilter, setDelegateFilter] = useState('All') // 'All' or delegated_to value
   const [orderBy, setOrderBy] = useState('reported') // 'reported' | 'priority' | 'status'
-
-  // derived lists
-  const delegates = useMemo(() => {
-    const list = Array.from(new Set(rows.map(r => r.delegated_to).filter(Boolean)))
-    return ['All', ...list]
-  }, [rows])
 
   const filteredRows = useMemo(() => {
     let res = Array.isArray(rows) ? rows.slice() : []
@@ -78,23 +79,53 @@ export default function TableExample() {
   const markDone = (id) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'done' } : r))
 
-    // fetch done incidents into the backend
+    // TODO: fetch done status to the backend
+  }
+
+  // change status of an incident
+  const changeStatus = (id, newStatus) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
+    // Force close dropdown by clicking outside
+    setTimeout(() => {
+      document.body.click()
+    }, 0)
+    
+    // TODO: fetch status change to the backend
   }
 
   // delegate an incident to an organization/user
   const delegateTo = (id, delegated) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, delegated_to: delegated } : r))
+    // Force close dropdown by clicking outside
+    setTimeout(() => {
+      document.body.click()
+    }, 0)
+    
+    // Add new delegate to the list if it doesn't exist
+    if (!allDelegates.includes(delegated)) {
+      setAllDelegates(prev => ['All', ...Array.from(new Set([...prev.filter(d => d !== 'All'), delegated])).sort()])
+    }
 
-    // fetch delegation into the backend
+    // TODO: fetch delegation to the backend
+  }
+
+  // add new delegate option
+  const addNewDelegate = () => {
+    const newDelegate = prompt("Enter name of new delegate/organization:")
+    if (newDelegate && newDelegate.trim()) {
+      return newDelegate.trim()
+    }
+    return null
   }
 
   return (
     
     <div>
       
-      <div className="controls d-flex flex-wrap gap-3 mb-3 p-3 bg-light rounded shadow-sm">
-        <div className="block d-flex flex-column me-2">
-          <div className="label fw-bold mb-2">Show incidents with status:</div>
+      <div className="controls d-flex flex-wrap gap-3 mb-3 p-3 bg-light rounded shadow-sm align-items-end justify-content-between">
+        <div className="d-flex flex-wrap gap-3">
+          <div className="block d-flex flex-column me-2">
+            <div className="label fw-bold mb-2">Show incidents with status:</div>
           <div className="btn-row d-flex gap-2">
             {[
               { label: 'All', value: 'all' },
@@ -111,14 +142,14 @@ export default function TableExample() {
                 {opt.label}
               </button>
             ))}
+            </div>
           </div>
-        </div>
 
 
 
 
-        <div className="block d-flex flex-column">
-          <div className="label fw-bold mb-2">Order by:</div>
+          <div className="block d-flex flex-column">
+            <div className="label fw-bold mb-2">Order by:</div>
           <div className="btn-row d-flex gap-2">
             <button
               type="button"
@@ -141,19 +172,19 @@ export default function TableExample() {
             >
               Status
             </button>
+            </div>
           </div>
-        </div>
           
 
-        <div className="block d-flex flex-column me-2">
-          <div className="label fw-bold mb-2">Delegated to:</div>
+          <div className="block d-flex flex-column me-2">
+            <div className="label fw-bold mb-2">Delegated to:</div>
           <div className="btn-row">
             <CDropdown>
               <CDropdownToggle color="secondary" className="btn-sm" >
                 {delegateFilter}
               </CDropdownToggle>
               <CDropdownMenu>
-                {delegates.map(d => (
+                {allDelegates.map(d => (
                   <CDropdownItem key={d} onClick={() => setDelegateFilter(d)} active={delegateFilter === d}>
                     {d}
                   </CDropdownItem>
@@ -162,10 +193,25 @@ export default function TableExample() {
             </CDropdown>
           </div>
         </div>
+        </div>
+
+        <div className="block d-flex flex-column">
+          <div className="label fw-bold mb-2">New Incident</div>
+          <CButton 
+            color="primary" 
+            onClick={() => {
+              // TODO: Open modal or form to create new incident
+              alert('Create new incident functionality coming soon!')
+            }}
+          >
+            + Create New Incident
+          </CButton>
+        </div>
       </div>
 
-      <CTable hover responsive>
-      <CTableHead>
+      <div className="overflow-hidden shadow-sm rounded-top" style={{ borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
+  <CTable hover responsive>
+  <CTableHead>
         <CTableRow>
           <CTableHeaderCell></CTableHeaderCell>
           <CTableHeaderCell>Title</CTableHeaderCell>
@@ -202,44 +248,105 @@ export default function TableExample() {
                 </CTableDataCell>
 
                 <CTableDataCell style={commonCellStyle}>{r.title}</CTableDataCell>
-                <CTableDataCell style={commonCellStyle}>
+                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>
                   {r.status === 'in_progress' ? 'in progress' : r.status}
                 </CTableDataCell>
-                <CTableDataCell style={commonCellStyle}>{r.delegated_to}</CTableDataCell>
-                <CTableDataCell style={commonCellStyle}>{r.priority}</CTableDataCell>
-                <CTableDataCell style={commonCellStyle}>
+                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{r.delegated_to}</CTableDataCell>
+                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{r.priority}</CTableDataCell>
+                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>
                   <CCol className="d-flex justify-content-center">
-                    <CDropdown className='me-3' onClick={(e) => e.stopPropagation()}>
+                    <CDropdown className='me-2' onClick={(e) => e.stopPropagation()}>
                       <CDropdownToggle 
                         color="secondary"
+                        size="sm"
                         disabled={isDone}>
                         Show on map
                       </CDropdownToggle>
                       <CDropdownMenu>
-                        <CDropdownItem href="#" onClick={(e) => e.stopPropagation()}>2D</CDropdownItem>
-                        <CDropdownItem href="#" onClick={(e) => e.stopPropagation()}>3D</CDropdownItem>
+                        <CDropdownItem 
+                          href="#" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setTimeout(() => document.body.click(), 0);
+                          }}
+                        >
+                          2D
+                        </CDropdownItem>
+                        <CDropdownItem 
+                          href="#" 
+                          onClick={(e) => { 
+                            e.stopPropagation(); 
+                            setTimeout(() => document.body.click(), 0);
+                          }}
+                        >
+                          3D
+                        </CDropdownItem>
                       </CDropdownMenu>
                     </CDropdown>
 
-                    <CDropdown className='me-3' onClick={(e) => e.stopPropagation()}>
+                    <CDropdown className='me-2' onClick={(e) => e.stopPropagation()}>
                       <CDropdownToggle
                         color="secondary"
+                        size="sm"
                         disabled={isDone}>
-                        Delegate at
+                        Delegate to
                       </CDropdownToggle>
                       <CDropdownMenu>
-                        {delegates.filter(d => d !== 'All').map(d => (
+                        {allDelegates.filter(d => d !== 'All').map(d => (
                           <CDropdownItem
                             key={d}
-                            onClick={(e) => { e.stopPropagation(); delegateTo(r.id, d); }}
+                            onClick={(e) => {  delegateTo(r.id, d); e.stopPropagation(); }}
+                            active={d === r.delegated_to}
                           >
                             {d}
                           </CDropdownItem>
                         ))}
+                        <CDropdownItem divider />
+                        <CDropdownItem
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            const newDelegate = addNewDelegate();
+                            if (newDelegate) {
+                              delegateTo(r.id, newDelegate);
+                            }
+                          }}
+                        >
+                          + Add new delegate
+                        </CDropdownItem>
                       </CDropdownMenu>
                     </CDropdown>
 
-                    <CButton color={isDone ? "secondary" : "success"} disabled={isDone} onClick={(e) => { e.stopPropagation(); markDone(r.id); }}>Done</CButton>
+                    <CDropdown className='me-2' onClick={(e) => e.stopPropagation()}>
+                      <CDropdownToggle
+                        color="primary"
+                        size="sm"
+                        disabled={isDone}>
+                        Change Status
+                      </CDropdownToggle>
+                      <CDropdownMenu>
+                        <CDropdownItem
+                          onClick={(e) => { changeStatus(r.id, 'open'); e.stopPropagation(); }}
+                          active={r.status === 'open'}
+                        >
+                          Open
+                        </CDropdownItem>
+                        <CDropdownItem
+                          onClick={(e) => { changeStatus(r.id, 'in_progress'); e.stopPropagation(); }}
+                          active={r.status === 'in_progress'}
+                        >
+                          In Progress
+                        </CDropdownItem>
+                      </CDropdownMenu>
+                    </CDropdown>
+
+                    <CButton 
+                      color={isDone ? "secondary" : "success"} 
+                      size="sm"
+                      disabled={isDone} 
+                      onClick={(e) => { e.stopPropagation(); markDone(r.id); }}
+                    >
+                      Done
+                    </CButton>
                   </CCol>
                 </CTableDataCell>
               </CTableRow>
@@ -261,6 +368,7 @@ export default function TableExample() {
         })}
       </CTableBody>
     </CTable>
+    </div>
     </div>
   )
 }
