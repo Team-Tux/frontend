@@ -64,6 +64,26 @@ export default function CreateIncident() {
     localStorage.setItem('incidents', JSON.stringify(updatedIncidents))
     
     // TODO: Send data to backend
+    fetch('/api/v1/incidents/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newIncident),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully created incident on backend:', data)
+    })
+    .catch(error => {
+      console.error('Error creating incident on backend:', error)
+    })
+
     console.log('Creating incident:', newIncident)
     
     alert('Incident created successfully!')

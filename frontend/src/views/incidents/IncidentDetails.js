@@ -198,7 +198,7 @@ export default function IncidentDetails() {
       <div style={{ marginBottom: '1rem' }}>
         Hier die Map
       </div>
-      <CCard style={{ width: '48rem' }}>
+      <CCard style={{ width: '48rem', marginBottom: '2rem' }}>
         <CCardBody>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
             <CButton color="secondary" size="sm" onClick={() => navigate(-1)}>Back</CButton>
@@ -221,12 +221,20 @@ export default function IncidentDetails() {
                   >
                     Release
                   </CButton>
+                  
                   <CButton
                     color="success"
                     size="sm"
                     onClick={() => updateStatus('done')}
                   >
                    Done 
+                  </CButton>
+                  <CButton
+                    color="danger"
+                    size="sm"
+                   // toDo: call philipps api and show the best way for the ambulance 
+                  >
+                   Send Ambulance 
                   </CButton>
                 </>
               )}

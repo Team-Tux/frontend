@@ -55,7 +55,11 @@ function Helper() {
 
         // fetch incidents and merge with localStorage (for status updates)
         const local = JSON.parse(localStorage.getItem('incidents') || '[]');
-        const resp = await fetch("/incidents.json");
+        const resp = await fetch("/api/v1/incidents/", {
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
         const fetched = await resp.json();
         if (!mounted) return;
         
