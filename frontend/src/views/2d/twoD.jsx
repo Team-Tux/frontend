@@ -5,9 +5,22 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import * as turf from "@turf/turf";
 import { CContainer } from "@coreui/react";
 
-const TwoD = () => {
+const TwoD = ({}) => {
   const initialCoords = [9.6861753, 50.5652165];
-
+  const [points, setPoints] = useState([
+    { id: 0, cord: [9.6861753, 50.5652165], radius: 30 },
+    { id: 1, cord: [9.704481903105375, 50.561469999275005], radius: 60 },
+  ]);
+  const [sensors, setSensors] = useState([
+    { type: "TEST", cord: [9.685875926986967, 50.56519975931357] },
+    { type: "TEST", cord: [9.686164571163602, 50.56560835807784] },
+    { type: "TEST", cord: [9.686414016601816, 50.56518753644707] },
+  ]);
+  const [helper, setHelper] = useState([
+    { id: 1, cord: [9.686156524537353, 50.56509212697179] },
+    { id: 2, cord: [9.686261130688592, 50.56505123713765] },
+    { id: 3, cord: [9.686304046032888, 50.5650324959515] },
+  ]);
   const GEOFENCE = turf.circle(initialCoords, 15, { units: "miles" });
   const [selectedId, setSelectedId] = useState();
   const [helpersJson, setHelpersJson] = useState();
@@ -19,20 +32,6 @@ const TwoD = () => {
     longitude: initialCoords[0],
     zoom: 18,
   });
-  const points = [
-    { id: 0, cord: [9.6861753, 50.5652165], radius: 30 },
-    { id: 1, cord: [9.704481903105375, 50.561469999275005], radius: 60 },
-  ];
-  const sensors = [
-    { type: "TEST", cord: [9.685875926986967, 50.56519975931357] },
-    { type: "TEST", cord: [9.686164571163602, 50.56560835807784] },
-    { type: "TEST", cord: [9.686414016601816, 50.56518753644707] },
-  ];
-  const helper = [
-    { id: 1, cord: [9.686156524537353, 50.56509212697179] },
-    { id: 2, cord: [9.686261130688592, 50.56505123713765] },
-    { id: 3, cord: [9.686304046032888, 50.5650324959515] },
-  ];
 
   const circles = useMemo(() => {
     const circleFeatures = points
