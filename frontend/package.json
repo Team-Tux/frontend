@@ -27,6 +27,8 @@
     "@coreui/react-chartjs": "^3.0.0",
     "@coreui/utils": "^2.0.2",
     "@popperjs/core": "^2.11.8",
+    "@react-three/drei": "^10.7.6",
+    "@react-three/fiber": "^9.4.0",
     "@tanstack/react-router": "^1.133.27",
     "@turf/turf": "^7.2.0",
     "@vis.gl/react-maplibre": "^8.1.0",
@@ -38,10 +40,13 @@
     "prop-types": "^15.8.1",
     "react": "^19.1.1",
     "react-dom": "^19.1.1",
+    "react-map-gl": "^8.1.0",
     "react-redux": "^9.2.0",
     "react-router-dom": "^7.7.1",
+    "react-three-map": "^1.0.0",
     "redux": "5.0.1",
-    "simplebar-react": "^3.3.2"
+    "simplebar-react": "^3.3.2",
+    "threebox-plugin": "^2.2.7"
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^5.0.0",
