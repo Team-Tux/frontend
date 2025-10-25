@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useMemo } from 'react'
 import {
   CTable, CTableBody, CTableHead, CTableHeaderCell,
   CTableRow, CTableDataCell, CCollapse, CDropdown, CDropdownToggle,
@@ -16,7 +16,53 @@ export default function TableExample() {
       .catch(err => console.error('Error fetching incidents:', err))
   }, [])
 
-  rows.sort((a, b) => new Date(b.reported_at) - new Date(a.reported_at))
+  // filter / sort state
+  const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'open' | 'in_progress' | 'done'
+  const [delegateFilter, setDelegateFilter] = useState('All') // 'All' or delegated_to value
+  const [orderBy, setOrderBy] = useState('reported') // 'reported' | 'priority' | 'status'
+
+  // derived lists
+  const delegates = useMemo(() => {
+    const list = Array.from(new Set(rows.map(r => r.delegated_to).filter(Boolean)))
+    return ['All', ...list]
+  }, [rows])
+
+  const filteredRows = useMemo(() => {
+    let res = Array.isArray(rows) ? rows.slice() : []
+
+    if (statusFilter && statusFilter !== 'all') {
+      res = res.filter(r => {
+        if (statusFilter === 'done') return (r.status === 'done' || r.status === 'closed')
+        return r.status === statusFilter
+      })
+    }
+
+    if (delegateFilter && delegateFilter !== 'All') {
+      res = res.filter(r => r.delegated_to === delegateFilter)
+    }
+
+    // sort
+    const prioOrder = { high: 3, medium: 2, low: 1 }
+    if (orderBy === 'reported') {
+      res.sort((a, b) => new Date(b.reported_at) - new Date(a.reported_at))
+    } else if (orderBy === 'priority') {
+      res.sort((a, b) => (prioOrder[String(b.priority).toLowerCase()] || 0) - (prioOrder[String(a.priority).toLowerCase()] || 0))
+    } else if (orderBy === 'status') {
+      // custom status order: open first, then in_progress, then done/closed, then others
+      const statusOrder = { open: 0, in_progress: 1, done: 2, closed: 2 }
+      res.sort((a, b) => {
+        const sa = String(a.status || '').toLowerCase()
+        const sb = String(b.status || '').toLowerCase()
+        const oa = Object.prototype.hasOwnProperty.call(statusOrder, sa) ? statusOrder[sa] : 99
+        const ob = Object.prototype.hasOwnProperty.call(statusOrder, sb) ? statusOrder[sb] : 99
+        if (oa !== ob) return oa - ob
+        // fallback alphabetical
+        return sa.localeCompare(sb)
+      })
+    }
+
+    return res
+  }, [rows, statusFilter, delegateFilter, orderBy])
 
   const getBg = (s) => {
     if (!s) return undefined
@@ -29,7 +75,82 @@ export default function TableExample() {
   }
 
   return (
-    <CTable hover responsive>
+    
+    <div>
+      
+      <div className="controls d-flex flex-wrap gap-3 mb-3 p-3 bg-light rounded shadow-sm">
+        <div className="block d-flex flex-column me-2">
+          <div className="label fw-bold mb-2">Show incidents with status:</div>
+          <div className="btn-row d-flex gap-2">
+            {[
+              { label: 'All', value: 'all' },
+              { label: 'Open', value: 'open' },
+              { label: 'In progress', value: 'in_progress' },
+              { label: 'Done', value: 'done' },
+            ].map(opt => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => setStatusFilter(opt.value)}
+                className={`btn ${statusFilter === opt.value ? 'btn-primary' : 'btn-outline-secondary'} btn-sm`}
+              >
+                {opt.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
+
+
+
+        <div className="block d-flex flex-column">
+          <div className="label fw-bold mb-2">Order by:</div>
+          <div className="btn-row d-flex gap-2">
+            <button
+              type="button"
+              onClick={() => setOrderBy('reported')}
+              className={`btn ${orderBy === 'reported' ? 'btn-primary' : 'btn-outline-secondary'} btn-sm`}
+            >
+              Reported date
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderBy('priority')}
+              className={`btn ${orderBy === 'priority' ? 'btn-primary' : 'btn-outline-secondary'} btn-sm`}
+            >
+              Priority
+            </button>
+            <button
+              type="button"
+              onClick={() => setOrderBy('status')}
+              className={`btn ${orderBy === 'status' ? 'btn-primary' : 'btn-outline-secondary'} btn-sm`}
+            >
+              Status
+            </button>
+          </div>
+        </div>
+          
+
+        <div className="block d-flex flex-column me-2">
+          <div className="label fw-bold mb-2">Delegated to:</div>
+          <div className="btn-row">
+            <CDropdown>
+              <CDropdownToggle color="secondary" className="btn-sm">
+                {delegateFilter}
+              </CDropdownToggle>
+              <CDropdownMenu>
+                {delegates.map(d => (
+                  <CDropdownItem key={d} onClick={() => setDelegateFilter(d)} active={delegateFilter === d}>
+                    {d}
+                  </CDropdownItem>
+                ))}
+              </CDropdownMenu>
+            </CDropdown>
+          </div>
+        </div>
+      </div>
+
+      <CTable hover responsive>
       <CTableHead>
         <CTableRow>
           <CTableHeaderCell></CTableHeaderCell>
@@ -42,7 +163,7 @@ export default function TableExample() {
       </CTableHead>
 
       <CTableBody>
-        {rows.map(r => {
+        {filteredRows.map(r => {
           const isOpen = openRow === r.id
           const isDone = r.status === 'closed' || r.status === 'done'
           const commonCellStyle = {
@@ -77,20 +198,22 @@ export default function TableExample() {
                     <CDropdown className='me-4'>
                       <CDropdownToggle 
                         color="secondary"
-                        disabled={isDone}>Show on map</CDropdownToggle>
+                        disabled={isDone}>
+                        Show on map
+                      </CDropdownToggle>
                       <CDropdownMenu>
                         <CDropdownItem href="#">2D</CDropdownItem>
                         <CDropdownItem href="#">3D</CDropdownItem>
                       </CDropdownMenu>
                     </CDropdown>
 
-                    <CButton color={isDone ? "secondary" : "success"}disabled={isDone}>Done</CButton>
+                    <CButton color={isDone ? "secondary" : "success"} disabled={isDone}>Done</CButton>
                   </CCol>
                 </CTableDataCell>
               </CTableRow>
 
               <CTableRow>
-                <CTableDataCell colSpan={8} className="p-0 border-0">
+                <CTableDataCell colSpan={6} className="p-0 border-0">
                   <CCollapse visible={isOpen}>
                     <div className="p-3">
                       <div><b>Description:</b> {r.description}</div>
@@ -106,6 +229,7 @@ export default function TableExample() {
         })}
       </CTableBody>
     </CTable>
+    </div>
   )
 }
 TableExample.displayName = 'TableExample'
