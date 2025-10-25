@@ -74,6 +74,20 @@ export default function TableExample() {
     return undefined
   }
 
+  // mark an incident as done
+  const markDone = (id) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'done' } : r))
+
+    // fetch done incidents into the backend
+  }
+
+  // delegate an incident to an organization/user
+  const delegateTo = (id, delegated) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, delegated_to: delegated } : r))
+
+    // fetch delegation into the backend
+  }
+
   return (
     
     <div>
@@ -135,7 +149,7 @@ export default function TableExample() {
           <div className="label fw-bold mb-2">Delegated to:</div>
           <div className="btn-row">
             <CDropdown>
-              <CDropdownToggle color="secondary" className="btn-sm">
+              <CDropdownToggle color="secondary" className="btn-sm" >
                 {delegateFilter}
               </CDropdownToggle>
               <CDropdownMenu>
@@ -195,19 +209,37 @@ export default function TableExample() {
                 <CTableDataCell style={commonCellStyle}>{r.priority}</CTableDataCell>
                 <CTableDataCell style={commonCellStyle}>
                   <CCol className="d-flex justify-content-center">
-                    <CDropdown className='me-4'>
+                    <CDropdown className='me-3' onClick={(e) => e.stopPropagation()}>
                       <CDropdownToggle 
                         color="secondary"
                         disabled={isDone}>
                         Show on map
                       </CDropdownToggle>
                       <CDropdownMenu>
-                        <CDropdownItem href="#">2D</CDropdownItem>
-                        <CDropdownItem href="#">3D</CDropdownItem>
+                        <CDropdownItem href="#" onClick={(e) => e.stopPropagation()}>2D</CDropdownItem>
+                        <CDropdownItem href="#" onClick={(e) => e.stopPropagation()}>3D</CDropdownItem>
                       </CDropdownMenu>
                     </CDropdown>
 
-                    <CButton color={isDone ? "secondary" : "success"} disabled={isDone}>Done</CButton>
+                    <CDropdown className='me-3' onClick={(e) => e.stopPropagation()}>
+                      <CDropdownToggle
+                        color="secondary"
+                        disabled={isDone}>
+                        Delegate at
+                      </CDropdownToggle>
+                      <CDropdownMenu>
+                        {delegates.filter(d => d !== 'All').map(d => (
+                          <CDropdownItem
+                            key={d}
+                            onClick={(e) => { e.stopPropagation(); delegateTo(r.id, d); }}
+                          >
+                            {d}
+                          </CDropdownItem>
+                        ))}
+                      </CDropdownMenu>
+                    </CDropdown>
+
+                    <CButton color={isDone ? "secondary" : "success"} disabled={isDone} onClick={(e) => { e.stopPropagation(); markDone(r.id); }}>Done</CButton>
                   </CCol>
                 </CTableDataCell>
               </CTableRow>
