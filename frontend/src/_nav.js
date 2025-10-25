@@ -35,6 +35,12 @@ const _nav = [
     to: '/3d',
     icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
   },
+  {
+    component: CNavItem,
+    name: 'Helper',
+    to: '/helper',
+    icon: <CIcon icon={cilSpeedometer} customClassName="nav-icon" />,
+  },
   // {
   //   component: CNavTitle,
   //   name: 'Theme',

@@ -1,5 +1,5 @@
 import React from 'react'
-import { useLocation } from 'react-router-dom'
+import { useLocation, Link } from 'react-router-dom'
 
 import routes from '../routes'
 
@@ -33,14 +33,22 @@ const AppBreadcrumb = () => {
 
   return (
     <CBreadcrumb className="my-0">
-      <CBreadcrumbItem href="/">Home</CBreadcrumbItem>
+      <CBreadcrumbItem>
+        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>Home</Link>
+      </CBreadcrumbItem>
       {breadcrumbs.map((breadcrumb, index) => {
         return (
           <CBreadcrumbItem
-            {...(breadcrumb.active ? { active: true } : { href: breadcrumb.pathname })}
+            {...(breadcrumb.active ? { active: true } : {})}
             key={index}
           >
-            {breadcrumb.name}
+            {breadcrumb.active ? (
+              breadcrumb.name
+            ) : (
+              <Link to={breadcrumb.pathname} style={{ textDecoration: 'none', color: 'inherit' }}>
+                {breadcrumb.name}
+              </Link>
+            )}
           </CBreadcrumbItem>
         )
       })}

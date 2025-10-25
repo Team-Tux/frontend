@@ -1,0 +1,79 @@
+[
+  {
+    "id": 1,
+    "title": "Hydrant Inspection",
+    "description": "Routine check of hydrant pressure in district north.",
+    "status": "in_progress",
+    "reported_at": "2025-02-05T08:30:00Z",
+    "priority": "low",
+    "delegated_to": "Firefighter",
+    "lat": 48.1374,
+    "lon": 11.5755
+  },
+  {
+    "id": 2,
+    "title": "Logistics Material Inventory",
+    "description": "Stock check of shelter equipment containers.",
+    "status": "open",
+    "reported_at": "2025-02-04T11:10:00Z",
+    "priority": "medium",
+    "delegated_to": "THW",
+    "lat": 50.1109,
+    "lon": 8.6821
+  },
+  {
+    "id": 3,
+    "title": "Training Session Setup",
+    "description": "Prepare classroom and dummies for first aid course.",
+    "status": "done",
+    "reported_at": "2025-02-03T15:45:00Z",
+    "priority": "low",
+    "delegated_to": "Red Cross",
+    "lat": 52.3759,
+    "lon": 9.7320
+  },
+  {
+    "id": 4,
+    "title": "Generator Function Test",
+    "description": "Planned load test of backup generators at depot.",
+    "status": "in_progress",
+    "reported_at": "2025-02-05T07:20:00Z",
+    "priority": "medium",
+    "delegated_to": "THW",
+    "lat": 49.0069,
+    "lon": 8.4037
+  },
+  {
+    "id": 5,
+    "title": "Vehicle Cleaning & Refill",
+    "description": "Routine cleaning and fuel refill of unit fleet.",
+    "status": "open",
+    "reported_at": "2025-02-05T10:05:00Z",
+    "priority": "high",
+    "delegated_to": "Firefighter",
+    "lat": 48.2082,
+    "lon": 16.3738
+  },
+  {
+    "id": 6,
+    "title": "Medical Supplies Audit",
+    "description": "Check expiration dates and stock levels of medical kits.",
+    "status": "open",
+    "reported_at": "2025-02-02T14:30:00Z",
+    "priority": "high",
+    "delegated_to": "Police",
+    "lat": 53.5511,
+    "lon": 9.9937
+  },
+  {
+    "id": 8,
+    "title": "Communication System Check",
+    "description": "Test emergency radio communication systems.",
+    "status": "open",
+    "reported_at": "2025-02-02T14:30:00Z",
+    "priority": "high",
+    "delegated_to": "Technical Services",
+    "lat": 53.5511,
+    "lon": 9.9937
+  }  
+]
