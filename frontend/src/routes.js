@@ -1,7 +1,7 @@
 import React from 'react'
 
 const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
-const twoD = React.lazy(() => import('./views/2d/twoD'))
+import TwoD from './views/2d/twoD'
 const threeD = React.lazy(() => import('./views/3d/threeD'))
 const incidents = React.lazy(() => import('./views/incidents/Incidents'))
 
@@ -58,7 +58,7 @@ const Widgets = React.lazy(() => import('./views/widgets/Widgets'))
 const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/incidents', name: 'Incidents', element: incidents },
-  { path: '/2d', name: '2D', element: twoD },
+  { path: '/2d', name: '2D', element: TwoD },
   { path: '/3d', name: '3D', element: threeD },
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
   { path: '/theme/colors', name: 'Colors', element: Colors },
