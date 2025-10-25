@@ -4,23 +4,39 @@ import {
   CTableRow, CTableDataCell, CCollapse, CDropdown, CDropdownToggle,
   CDropdownMenu, CDropdownItem, CButton, CCol
 } from '@coreui/react'
+import { useNavigate } from 'react-router-dom'
 
 export default function TableExample() {
+  const navigate = useNavigate()
   const [openRow, setOpenRow] = useState(null)
   const [rows, setRows] = useState([])
   const [allDelegates, setAllDelegates] = useState(['All']) // Store all delegates separately
   const dropdownRefs = useRef({}) // Store refs to dropdowns
 
   useEffect(() => {
+    // First, try to load from localStorage
+    const localIncidents = JSON.parse(localStorage.getItem('incidents') || '[]')
+    
     fetch('/incidents.json')
       .then(r => r.json())
       .then(data => {
-        setRows(data)
-        // Extract all unique delegates from the initial data
-        const uniqueDelegates = Array.from(new Set(data.map(r => r.delegated_to).filter(Boolean)))
+        // Merge local incidents with fetched data
+        const mergedIncidents = [...localIncidents, ...data]
+        setRows(mergedIncidents)
+        
+        // Extract all unique delegates from the merged data
+        const uniqueDelegates = Array.from(new Set(mergedIncidents.map(r => r.delegated_to).filter(Boolean)))
         setAllDelegates(['All', ...uniqueDelegates.sort()])
       })
-      .catch(err => console.error('Error fetching incidents:', err))
+      .catch(err => {
+        console.error('Error fetching incidents:', err)
+        // If fetch fails, just use local incidents
+        if (localIncidents.length > 0) {
+          setRows(localIncidents)
+          const uniqueDelegates = Array.from(new Set(localIncidents.map(r => r.delegated_to).filter(Boolean)))
+          setAllDelegates(['All', ...uniqueDelegates.sort()])
+        }
+      })
   }, [])
 
   // filter / sort state
@@ -122,11 +138,11 @@ export default function TableExample() {
     
     <div>
       
-      <div className="controls d-flex flex-wrap gap-3 mb-3 p-3 bg-light rounded shadow-sm align-items-end justify-content-between">
+      <div className="controls d-flex flex-wrap gap-3 mb-3 p-3 rounded shadow-sm align-items-end justify-content-between" style={{ backgroundColor: 'var(--cui-body-bg)', border: '1px solid var(--cui-border-color)' }}>
         <div className="d-flex flex-wrap gap-3">
           <div className="block d-flex flex-column me-2">
-            <div className="label fw-bold mb-2">Show incidents with status:</div>
-          <div className="btn-row d-flex gap-2">
+            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Show incidents with status:</div>
+            <div className="btn-row d-flex gap-2">
             {[
               { label: 'All', value: 'all' },
               { label: 'Open', value: 'open' },
@@ -149,8 +165,8 @@ export default function TableExample() {
 
 
           <div className="block d-flex flex-column">
-            <div className="label fw-bold mb-2">Order by:</div>
-          <div className="btn-row d-flex gap-2">
+            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Order by:</div>
+            <div className="btn-row d-flex gap-2">
             <button
               type="button"
               onClick={() => setOrderBy('reported')}
@@ -177,8 +193,8 @@ export default function TableExample() {
           
 
           <div className="block d-flex flex-column me-2">
-            <div className="label fw-bold mb-2">Delegated to:</div>
-          <div className="btn-row">
+            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Delegated to:</div>
+            <div className="btn-row">
             <CDropdown>
               <CDropdownToggle color="secondary" className="btn-sm" >
                 {delegateFilter}
@@ -196,20 +212,17 @@ export default function TableExample() {
         </div>
 
         <div className="block d-flex flex-column">
-          <div className="label fw-bold mb-2">New Incident</div>
+          <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>New Incident</div>
           <CButton 
             color="primary" 
-            onClick={() => {
-              // TODO: Open modal or form to create new incident
-              alert('Create new incident functionality coming soon!')
-            }}
+            onClick={() => navigate('/incidents/create')}
           >
             + Create New Incident
           </CButton>
         </div>
       </div>
 
-      <div className="overflow-hidden shadow-sm rounded-top" style={{ borderTopLeftRadius: '8px', borderTopRightRadius: '8px' }}>
+      <div className="overflow-hidden shadow-sm rounded-top" style={{ borderTopLeftRadius: '8px', borderTopRightRadius: '8px', backgroundColor: 'var(--cui-body-bg)' }}>
   <CTable hover responsive>
   <CTableHead>
         <CTableRow>

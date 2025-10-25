@@ -4,6 +4,7 @@ const Dashboard = React.lazy(() => import('./views/dashboard/Dashboard'))
 const twoD = React.lazy(() => import('./views/2d/twoD'))
 const threeD = React.lazy(() => import('./views/3d/threeD'))
 const incidents = React.lazy(() => import('./views/incidents/Incidents'))
+const CreateIncident = React.lazy(() => import('./views/incidents/CreateIncident'))
 
 const Colors = React.lazy(() => import('./views/theme/colors/Colors'))
 const Typography = React.lazy(() => import('./views/theme/typography/Typography'))
@@ -58,6 +59,7 @@ const Widgets = React.lazy(() => import('./views/widgets/Widgets'))
 const routes = [
   { path: '/', exact: true, name: 'Home' },
   { path: '/incidents', name: 'Incidents', element: incidents },
+  { path: '/incidents/create', name: 'Create Incident', element: CreateIncident },
   { path: '/2d', name: '2D', element: twoD },
   { path: '/3d', name: '3D', element: threeD },
   { path: '/theme', name: 'Theme', element: Colors, exact: true },
