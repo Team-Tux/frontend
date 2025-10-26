@@ -5,6 +5,8 @@ import * as turf from "@turf/turf";
 import { CContainer, CButton } from "@coreui/react";
 
 const TwoD = ({
+  containerHeight = "75vh",
+  canShowButtons = true,
   initialCoords = [9.6861753, 50.5652165],
   destructionOpacity = 0.55,
   circleOpacity = 0.15,
@@ -322,8 +324,8 @@ const TwoD = ({
     victims: true,
   });
 
-  return (
-    <CContainer style={{ width: "100%", height: "75vh" }}>
+  const renderButtons = () => {
+    return (
       <div
         className="d-flex justify-content-between"
         style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
@@ -403,6 +405,12 @@ const TwoD = ({
           {layerVisibility.victims ? "Hide Victims" : "Show Victims"}
         </CButton>
       </div>
+    );
+  };
+
+  return (
+    <CContainer style={{ width: "100%", height: containerHeight }}>
+      {canShowButtons && renderButtons()}
       <Map
         {...viewState}
         onMove={onMove}

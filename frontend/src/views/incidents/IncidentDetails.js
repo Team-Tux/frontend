@@ -1,9 +1,10 @@
-import React, { useEffect, useState, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CCard, CCardBody, CCardTitle, CCardText, CButton, CFormInput } from '@coreui/react'
 import { useDelegates } from '../../api/delegates_api'
 import { useIncident, useUpdateStatus } from '../../api/incidents_api'
-import { usePinImage, usePins } from '../../api/pins_api'
+import { usePins } from '../../api/pins_api'
+import TwoD from '../2d/twoD'
 
 const IncidentDetails = () => {
   const { id } = useParams()
@@ -112,8 +113,8 @@ const IncidentDetails = () => {
 
   return (
     <div className="d-flex flex-column align-items-center">
-      <div style={{ marginBottom: '1rem' }}>
-        Hier die Map
+      <div style={{ marginBottom: '1rem', width: '100%', height: '25vh' }}>
+        <TwoD canShowButtons={false} containerHeight='100%' initialCoords={[incident.lon, incident.lat]}  />
       </div>
       <CCard style={{ width: '48rem', marginBottom: '2rem' }}>
         <CCardBody>
