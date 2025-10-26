@@ -24,8 +24,6 @@ const Login = () => {
   const [password, setPassword] = useState('')
 
   const sendLogin = () => {
-    console.log("AHA", email, password);
-
     axios.post(`${window.API_URL}/api/v1/login`, {
       username: email,
       password
