@@ -18,7 +18,7 @@ const AppSidebar = () => {
     >
       <CSidebarHeader className="border-bottom">
         <CSidebarBrand to="/" style={{ textDecoration: "none", color: "white", fontWeight: "600", fontSize: "1.1rem", justifyContent: "center" }}>
-          Cerebro
+          Guardian
         </CSidebarBrand>
         <CCloseButton className="d-lg-none" dark onClick={() => dispatch({ type: "set", sidebarShow: false })} />
       </CSidebarHeader>

@@ -1,4 +1,4 @@
-# Cerebro
+# Guardian-Frontend
 
 Out tool receives and visualizes classified RF signal data (Wi-Fi / Bluetooth) from drones and ground scanners to locate victims in rubble.
 Built for **incident command teams** to monitor, analyze, and dispatch search tasks to field units.
@@ -25,7 +25,7 @@ Build for production:
 npm run build
 ```
 
-App runs at http://localhost:3000
+App runs at <http://localhost:3000>
 
 ---
 
