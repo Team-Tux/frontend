@@ -123,13 +123,12 @@ export default function IncidentDetails() {
   const updateStatus = (newStatus) => {
     setIncident((prev) => ({ ...(prev || {}), status: newStatus }))
     
-    // Send status update to backend
-    fetch(`/api/v1/incidents/${id}`, {
+    // Send status update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/status?status=${newStatus}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({ status: newStatus }),
     })
     .then(response => {
       if (!response.ok) {

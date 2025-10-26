@@ -129,13 +129,12 @@ export default function TableExample() {
   const markDone = (id) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'done' } : r))
 
-    // Send status update to backend
-    fetch(`/api/v1/incidents/${id}`, {
+    // Send status update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/status?status=done`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({ status: 'done' }),
     })
     .then(response => {
       if (!response.ok) {
@@ -160,13 +159,12 @@ export default function TableExample() {
       document.body.click()
     }, 0)
     
-    // Send status update to backend
-    fetch(`/api/v1/incidents/${id}`, {
+    // Send status update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/status?status=${newStatus}`, {
       method: 'PATCH',
       headers: {
-        'Content-Type': 'application/json',
+        'Accept': 'application/json',
       },
-      body: JSON.stringify({ status: newStatus }),
     })
     .then(response => {
       if (!response.ok) {
