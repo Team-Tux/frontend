@@ -1,5 +1,5 @@
-import React from 'react'
-import CIcon from '@coreui/icons-react'
+import React from "react";
+import CIcon from "@coreui/icons-react";
 import {
   cil3d,
   cilLifeRing,
@@ -37,4 +37,4 @@ const _nav = [
  
 ]
 
-export default _nav
+export default _nav;
