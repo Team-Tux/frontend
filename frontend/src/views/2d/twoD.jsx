@@ -26,6 +26,8 @@ const TwoD = ({
   const [sensorsJson, setSensorsJson] = useState();
   const [incidentsJson, setIncidentsJson] = useState();
   const [victimsJson, setVictimsJson] = useState();
+  const [wsVictims, setWsVictims] = useState();
+  const [wsSensors, setWsSensors] = useState();
   const { data: helpersData } = useHelpers();
   const { data: sensorsData } = useSensors();
   const { data: victimsData } = useVictims();
@@ -48,7 +50,38 @@ const TwoD = ({
     // When a message is received
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setVictims(data);
+      setWsVictims(data);
+    };
+
+    // When there is an error
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    // When the connection is closed
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    // Cleanup function to close the WebSocket when the component unmounts
+    return () => {
+      ws.close();
+    };
+  }, []);
+
+  useEffect(() => {
+    // Create a WebSocket connection
+    const ws = new WebSocket(`ws://${window.SENSOR_API}/api/sensor/ws`);
+
+    // When the connection is open
+    ws.onopen = () => {
+      console.log("Connected to WebSocket");
+    };
+
+    // When a message is received
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setWsSensors(data);
     };
 
     // When there is an error
@@ -97,10 +130,10 @@ const TwoD = ({
   }, [incidentsData]);
 
   useEffect(() => {
-    if (sensorsData) {
+    if (sensorsData || wsSensors) {
       setSensorsJson({
         type: "FeatureCollection",
-        features: sensorsData.map((item) => {
+        features: [...sensorsData, ...wsSensors].map((item) => {
           return {
             type: "Feature",
             geometry: {
@@ -111,7 +144,7 @@ const TwoD = ({
         }),
       });
     }
-  }, [sensorsData]);
+  }, [sensorsData, wsSensors]);
 
   useEffect(() => {
     if (helpersData) {
@@ -128,10 +161,10 @@ const TwoD = ({
   }, [helpersData]);
 
   useEffect(() => {
-    if (victimsData) {
+    if (victimsData || wsVictims) {
       setVictimsJson({
         type: "FeatureCollection",
-        features: victimsData.map((item) => {
+        features: [...victimsData, ...wsVictims].map((item) => {
           return {
             type: "Feature",
             geometry: { type: "Point", coordinates: [item.lon, item.lat] },
@@ -139,7 +172,7 @@ const TwoD = ({
         }),
       });
     }
-  }, [victimsData]);
+  }, [victimsData, wsVictims]);
 
   const onZoom = (e) => {
     if (selectedId != undefined) {
