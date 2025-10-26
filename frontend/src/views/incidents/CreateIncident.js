@@ -1,4 +1,4 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect } from 'react'
 import {
   CCard,
   CCardBody,
@@ -15,18 +15,14 @@ import {
   CDropdownToggle,
   CDropdownMenu,
   CDropdownItem,
+  CDropdownDivider,
 } from '@coreui/react'
 import { useNavigate } from 'react-router-dom'
 
 export default function CreateIncident() {
   const navigate = useNavigate()
-  const [allDelegates, setAllDelegates] = useState([
-    'Fire Department',
-    'Police',
-    'Medical Services',
-    'Public Works',
-    'Environmental Agency',
-  ])
+  const [allDelegates, setAllDelegates] = useState([]) // Store all delegates with {id, name}
+  const [delegateMap, setDelegateMap] = useState({}) // Map delegate id to name
   
   const [formData, setFormData] = useState({
     title: '',
@@ -37,12 +33,36 @@ export default function CreateIncident() {
     delegated_to: '',
   })
 
+  // Fetch delegates from API
+  useEffect(() => {
+    fetch('/api/v1/delegates/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Fetched delegates from API:', data)
+        const fetchedDelegates = Array.isArray(data) ? data : []
+        setAllDelegates(fetchedDelegates)
+        
+        // Create a map of id -> name for easy lookup
+        const map = {}
+        fetchedDelegates.forEach(d => {
+          map[d.id] = d.name
+        })
+        setDelegateMap(map)
+      })
+      .catch(err => {
+        console.error('Error fetching delegates:', err)
+      })
+  }, [])
+
   const handleSubmit = (e) => {
     e.preventDefault()
     
     // Create new incident object
-    const newIncident = {
-      id: Date.now(), // Simple ID generation
+    const newIncident = { 
       title: formData.title,
       description: formData.description,
       priority: formData.priority,
@@ -53,20 +73,31 @@ export default function CreateIncident() {
       reported_at: new Date().toISOString(),
     }
     
-    // Get existing incidents from localStorage
-    const existingIncidents = JSON.parse(localStorage.getItem('incidents') || '[]')
-    
-    // Add new incident
-    const updatedIncidents = [newIncident, ...existingIncidents]
-    
-    // Save to localStorage
-    localStorage.setItem('incidents', JSON.stringify(updatedIncidents))
-    
-    // TODO: Send data to backend
+    // Send data to backend
+    fetch('/api/v1/incidents/', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(newIncident),
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Network response was not ok')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully created incident on backend:', data)
+      alert('Incident created successfully!')
+      navigate('/incidents')
+    })
+    .catch(error => {
+      console.error('Error creating incident on backend:', error)
+      alert('Error creating incident. Please try again.')
+    })
+
     console.log('Creating incident:', newIncident)
-    
-    alert('Incident created successfully!')
-    navigate('/incidents')
   }
 
   const handleChange = (e) => {
@@ -74,22 +105,52 @@ export default function CreateIncident() {
     setFormData(prev => ({ ...prev, [name]: value }))
   }
 
-  const addNewDelegate = () => {
-    const newDelegate = prompt("Enter name of new delegate/organization:")
-    if (newDelegate && newDelegate.trim()) {
-      const trimmedDelegate = newDelegate.trim()
-      // Add to delegates list if not already present
-      if (!allDelegates.includes(trimmedDelegate)) {
-        setAllDelegates(prev => [...prev, trimmedDelegate].sort())
+  // Helper function to get delegate name from id
+  const getDelegateName = (delegateId) => {
+    if (!delegateId) return 'Select Organization'
+    return delegateMap[delegateId] || `ID: ${delegateId}`
+  }
+
+  const createNewDelegate = async () => {
+    const newDelegateName = prompt("Enter name of new delegate/organization:")
+    if (!newDelegateName || !newDelegateName.trim()) {
+      return null
+    }
+
+    try {
+      const response = await fetch('/api/v1/delegates/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newDelegateName.trim() }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create delegate')
       }
+
+      const newDelegate = await response.json()
+      console.log('Successfully created new delegate:', newDelegate)
+      
+      // Update local state with new delegate
+      setAllDelegates(prev => [...prev, newDelegate].sort((a, b) => a.name.localeCompare(b.name)))
+      setDelegateMap(prev => ({ ...prev, [newDelegate.id]: newDelegate.name }))
+      
       // Set as selected
-      setFormData(prev => ({ ...prev, delegated_to: trimmedDelegate }))
+      setFormData(prev => ({ ...prev, delegated_to: newDelegate.id }))
       setTimeout(() => document.body.click(), 0)
+      
+      return newDelegate.id
+    } catch (error) {
+      console.error('Error creating new delegate:', error)
+      alert('Failed to create new delegate. Please try again.')
+      return null
     }
   }
 
-  const selectDelegate = (delegate) => {
-    setFormData(prev => ({ ...prev, delegated_to: delegate }))
+  const selectDelegate = (delegateId) => {
+    setFormData(prev => ({ ...prev, delegated_to: delegateId }))
     setTimeout(() => document.body.click(), 0)
   }
 
@@ -181,30 +242,30 @@ export default function CreateIncident() {
                 <div className="d-flex gap-2 align-items-center">
                   <CDropdown>
                     <CDropdownToggle color="secondary">
-                      {formData.delegated_to || 'Select Organization'}
+                      {getDelegateName(formData.delegated_to)}
                     </CDropdownToggle>
                     <CDropdownMenu>
                       <CDropdownItem onClick={() => selectDelegate('')}>
                         None
                       </CDropdownItem>
-                      <CDropdownItem divider />
+                      <CDropdownDivider />
                       {allDelegates.map(d => (
                         <CDropdownItem
-                          key={d}
-                          onClick={() => selectDelegate(d)}
-                          active={d === formData.delegated_to}
+                          key={d.id}
+                          onClick={() => selectDelegate(d.id)}
+                          active={d.id === formData.delegated_to}
                         >
-                          {d}
+                          {d.name}
                         </CDropdownItem>
                       ))}
-                      <CDropdownItem divider />
-                      <CDropdownItem onClick={addNewDelegate}>
+                      <CDropdownDivider />
+                      <CDropdownItem onClick={createNewDelegate}>
                         + Add new delegate
                       </CDropdownItem>
                     </CDropdownMenu>
                   </CDropdown>
                   {formData.delegated_to && (
-                    <span className="text-muted">Selected: <strong>{formData.delegated_to}</strong></span>
+                    <span className="text-muted">Selected: <strong>{getDelegateName(formData.delegated_to)}</strong></span>
                   )}
                 </div>
               </div>

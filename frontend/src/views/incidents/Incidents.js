@@ -2,7 +2,7 @@ import React, { useEffect, useState, useMemo, useRef } from 'react'
 import {
   CTable, CTableBody, CTableHead, CTableHeaderCell,
   CTableRow, CTableDataCell, CCollapse, CDropdown, CDropdownToggle,
-  CDropdownMenu, CDropdownItem, CButton, CCol
+  CDropdownMenu, CDropdownItem, CDropdownDivider, CButton, CCol
 } from '@coreui/react'
 import { useNavigate } from 'react-router-dom'
 
@@ -10,39 +10,73 @@ export default function TableExample() {
   const navigate = useNavigate()
   const [openRow, setOpenRow] = useState(null)
   const [rows, setRows] = useState([])
-  const [allDelegates, setAllDelegates] = useState(['All']) // Store all delegates separately
+  const [allDelegates, setAllDelegates] = useState([]) // Store all delegates with {id, name}
+  const [delegateMap, setDelegateMap] = useState({}) // Map delegate id to name
+  const [incidentImages, setIncidentImages] = useState({}) // Store images for each incident
   const dropdownRefs = useRef({}) // Store refs to dropdowns
 
+  // Fetch delegates from API
   useEffect(() => {
-    // First, try to load from localStorage
-    const localIncidents = JSON.parse(localStorage.getItem('incidents') || '[]')
-    
-    fetch('/incidents.json')
+    fetch('/api/v1/delegates/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
       .then(r => r.json())
       .then(data => {
-        // Merge local incidents with fetched data
-        const mergedIncidents = [...localIncidents, ...data]
-        setRows(mergedIncidents)
+        console.log('Fetched delegates from API:', data)
+        const fetchedDelegates = Array.isArray(data) ? data : []
+        setAllDelegates(fetchedDelegates)
         
-        // Extract all unique delegates from the merged data
-        const uniqueDelegates = Array.from(new Set(mergedIncidents.map(r => r.delegated_to).filter(Boolean)))
-        setAllDelegates(['All', ...uniqueDelegates.sort()])
+        // Create a map of id -> name for easy lookup
+        const map = {}
+        fetchedDelegates.forEach(d => {
+          map[d.id] = d.name
+        })
+        setDelegateMap(map)
+        console.log('Delegate map:', map)
+      })
+      .catch(err => {
+        console.error('Error fetching delegates:', err)
+      })
+  }, [])
+
+  useEffect(() => {
+    // Fetch incidents from API (via Vite proxy to avoid CORS)
+    fetch('/api/v1/incidents/', {
+      headers: {
+        'Accept': 'application/json'
+      }
+    })
+      .then(r => {
+        console.log('API Response status:', r.status)
+        console.log('API Response headers:', r.headers)
+        return r.json()
+      })
+      .then(data => {
+        console.log('Fetched incidents from API:', data)
+        console.log('Type of data:', typeof data)
+        console.log('Is array?', Array.isArray(data))
+        
+        const fetchedArray = Array.isArray(data) ? data : []
+        setRows(fetchedArray)
       })
       .catch(err => {
         console.error('Error fetching incidents:', err)
-        // If fetch fails, just use local incidents
-        if (localIncidents.length > 0) {
-          setRows(localIncidents)
-          const uniqueDelegates = Array.from(new Set(localIncidents.map(r => r.delegated_to).filter(Boolean)))
-          setAllDelegates(['All', ...uniqueDelegates.sort()])
-        }
+        setRows([])
       })
   }, [])
 
   // filter / sort state
   const [statusFilter, setStatusFilter] = useState('all') // 'all' | 'open' | 'in_progress' | 'done'
-  const [delegateFilter, setDelegateFilter] = useState('All') // 'All' or delegated_to value
+  const [delegateFilter, setDelegateFilter] = useState('All') // 'All' or delegate id
   const [orderBy, setOrderBy] = useState('reported') // 'reported' | 'priority' | 'status'
+
+  // Helper function to get delegate name from id
+  const getDelegateName = (delegateId) => {
+    if (!delegateId) return 'Unassigned'
+    return delegateMap[delegateId] || `ID: ${delegateId}`
+  }
 
   const filteredRows = useMemo(() => {
     let res = Array.isArray(rows) ? rows.slice() : []
@@ -55,7 +89,7 @@ export default function TableExample() {
     }
 
     if (delegateFilter && delegateFilter !== 'All') {
-      res = res.filter(r => r.delegated_to === delegateFilter)
+      res = res.filter(r => String(r.delegated_to) === String(delegateFilter))
     }
 
     // sort
@@ -95,43 +129,165 @@ export default function TableExample() {
   const markDone = (id) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: 'done' } : r))
 
-    // TODO: fetch done status to the backend
+    // Send status update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/status?status=done`, {
+      method: 'PATCH',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update status')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident status:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident status:', error)
+    })
   }
 
   // change status of an incident
   const changeStatus = (id, newStatus) => {
     setRows(prev => prev.map(r => r.id === id ? { ...r, status: newStatus } : r))
+    
     // Force close dropdown by clicking outside
     setTimeout(() => {
       document.body.click()
     }, 0)
     
-    // TODO: fetch status change to the backend
+    // Send status update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/status?status=${newStatus}`, {
+      method: 'PATCH',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update status')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident status:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident status:', error)
+    })
   }
 
   // delegate an incident to an organization/user
-  const delegateTo = (id, delegated) => {
-    setRows(prev => prev.map(r => r.id === id ? { ...r, delegated_to: delegated } : r))
+  const delegateTo = (id, delegateId) => {
+    setRows(prev => prev.map(r => r.id === id ? { ...r, delegated_to: delegateId } : r))
+    
     // Force close dropdown by clicking outside
     setTimeout(() => {
       document.body.click()
     }, 0)
-    
-    // Add new delegate to the list if it doesn't exist
-    if (!allDelegates.includes(delegated)) {
-      setAllDelegates(prev => ['All', ...Array.from(new Set([...prev.filter(d => d !== 'All'), delegated])).sort()])
-    }
 
-    // TODO: fetch delegation to the backend
+    // Send delegation update to backend (using query parameter)
+    fetch(`/api/v1/incidents/${id}/delegated_to?delegated_to=${delegateId}`, {
+      method: 'PATCH',
+      headers: {
+        'Accept': 'application/json',
+      },
+    })
+    .then(response => {
+      if (!response.ok) {
+        throw new Error('Failed to update delegation')
+      }
+      return response.json()
+    })
+    .then(data => {
+      console.log('Successfully updated incident delegation:', data)
+    })
+    .catch(error => {
+      console.error('Error updating incident delegation:', error)
+    })
   }
 
-  // add new delegate option
-  const addNewDelegate = () => {
-    const newDelegate = prompt("Enter name of new delegate/organization:")
-    if (newDelegate && newDelegate.trim()) {
-      return newDelegate.trim()
+  // Create a new delegate
+  const createNewDelegate = async () => {
+    const newDelegateName = prompt("Enter name of new delegate/organization:")
+    if (!newDelegateName || !newDelegateName.trim()) {
+      return null
     }
-    return null
+
+    try {
+      const response = await fetch('/api/v1/delegates/', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ name: newDelegateName.trim() }),
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to create delegate')
+      }
+
+      const newDelegate = await response.json()
+      console.log('Successfully created new delegate:', newDelegate)
+      
+      // Update local state with new delegate
+      setAllDelegates(prev => [...prev, newDelegate].sort((a, b) => a.name.localeCompare(b.name)))
+      setDelegateMap(prev => ({ ...prev, [newDelegate.id]: newDelegate.name }))
+      
+      return newDelegate.id
+    } catch (error) {
+      console.error('Error creating new delegate:', error)
+      alert('Failed to create new delegate. Please try again.')
+      return null
+    }
+  }
+
+  // Fetch images for a specific incident
+  const fetchImagesForIncident = async (incidentId, lat, lon) => {
+    console.log('🔍 Fetching images for incident:', incidentId, 'at coordinates:', { lat, lon })
+    
+    try {
+      // TODO: Replace with actual API call
+      // const response = await fetch(`/api/images?lat=${lat}&lon=${lon}`)
+      // const images = await response.json()
+      
+      // Mock existing images with file paths (simulating API response)
+      const mockExistingImages = [
+        {
+          id: `${incidentId}-img-1`,
+          name: 'photo_1.jpg',
+          filePath: '/uploads/images/photo_1.jpg',
+          uploadedAt: new Date(Date.now() - 86400000).toISOString(),
+        },
+        {
+          id: `${incidentId}-img-2`,
+          name: 'photo_2.jpg',
+          filePath: '/uploads/images/photo_2.jpg',
+          uploadedAt: new Date(Date.now() - 172800000).toISOString(),
+        }
+      ]
+      
+      console.log('✅ Found images for incident:', incidentId, mockExistingImages.length)
+      setIncidentImages(prev => ({ ...prev, [incidentId]: mockExistingImages }))
+      
+    } catch (error) {
+      console.error('❌ Error fetching images:', error)
+      setIncidentImages(prev => ({ ...prev, [incidentId]: [] }))
+    }
+  }
+
+  // Handle row toggle and fetch images if needed
+  const handleRowToggle = (incidentId, lat, lon) => {
+    const newOpenRow = openRow === incidentId ? null : incidentId
+    setOpenRow(newOpenRow)
+    
+    // Fetch images when opening a row if not already fetched
+    if (newOpenRow && !incidentImages[incidentId]) {
+      fetchImagesForIncident(incidentId, lat, lon)
+    }
   }
 
   return (
@@ -197,12 +353,15 @@ export default function TableExample() {
             <div className="btn-row">
             <CDropdown>
               <CDropdownToggle color="secondary" className="btn-sm" >
-                {delegateFilter}
+                {delegateFilter === 'All' ? 'All' : getDelegateName(delegateFilter)}
               </CDropdownToggle>
               <CDropdownMenu>
+                <CDropdownItem onClick={() => setDelegateFilter('All')} active={delegateFilter === 'All'}>
+                  All
+                </CDropdownItem>
                 {allDelegates.map(d => (
-                  <CDropdownItem key={d} onClick={() => setDelegateFilter(d)} active={delegateFilter === d}>
-                    {d}
+                  <CDropdownItem key={d.id} onClick={() => setDelegateFilter(d.id)} active={delegateFilter === d.id}>
+                    {d.name}
                   </CDropdownItem>
                 ))}
               </CDropdownMenu>
@@ -247,7 +406,7 @@ export default function TableExample() {
           return (
             <React.Fragment key={r.id}>
               <CTableRow
-                onClick={() => setOpenRow(isOpen ? null : r.id)}
+                onClick={() => handleRowToggle(r.id, r.lat, r.lon)}
                 color={getBg(isDone ? 'done' : r.priority)}
                 style={{ cursor: 'pointer' }}
               >
@@ -264,7 +423,7 @@ export default function TableExample() {
                 <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>
                   {r.status === 'in_progress' ? 'in progress' : r.status}
                 </CTableDataCell>
-                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{r.delegated_to}</CTableDataCell>
+                <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{getDelegateName(r.delegated_to)}</CTableDataCell>
                 <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>{r.priority}</CTableDataCell>
                 <CTableDataCell style={{ ...commonCellStyle, textDecoration: 'none' }}>
                   <CCol className="d-flex justify-content-center">
@@ -305,22 +464,22 @@ export default function TableExample() {
                         Delegate to
                       </CDropdownToggle>
                       <CDropdownMenu>
-                        {allDelegates.filter(d => d !== 'All').map(d => (
+                        {allDelegates.map(d => (
                           <CDropdownItem
-                            key={d}
-                            onClick={(e) => {  delegateTo(r.id, d); e.stopPropagation(); }}
-                            active={d === r.delegated_to}
+                            key={d.id}
+                            onClick={(e) => {  delegateTo(r.id, d.id); e.stopPropagation(); }}
+                            active={d.id === r.delegated_to}
                           >
-                            {d}
+                            {d.name}
                           </CDropdownItem>
                         ))}
-                        <CDropdownItem divider />
+                        <CDropdownDivider />
                         <CDropdownItem
-                          onClick={(e) => {
+                          onClick={async (e) => {
                             e.stopPropagation();
-                            const newDelegate = addNewDelegate();
-                            if (newDelegate) {
-                              delegateTo(r.id, newDelegate);
+                            const newDelegateId = await createNewDelegate();
+                            if (newDelegateId) {
+                              delegateTo(r.id, newDelegateId);
                             }
                           }}
                         >
@@ -369,9 +528,83 @@ export default function TableExample() {
                   <CCollapse visible={isOpen}>
                     <div className="p-3">
                       <div><b>Description:</b> {r.description}</div>
-                      <div><b>Delegated to:</b> {r.delegated_to}</div>
+                      <div><b>Delegated to:</b> {getDelegateName(r.delegated_to)}</div>
                       <div><b>Reported:</b> {new Date(r.reported_at).toLocaleString()}</div>
                       <div><b>Coords:</b> {r.lat}, {r.lon}</div>
+                      
+                      {/* Images Section */}
+                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--cui-border-color)' }}>
+                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
+                          <b>📷 Images:</b>
+                          {incidentImages[r.id] && (
+                            <span style={{ fontSize: '0.85rem', color: 'var(--cui-text-secondary)' }}>
+                              {incidentImages[r.id].length} image(s)
+                            </span>
+                          )}
+                        </div>
+                        
+                        {!incidentImages[r.id] ? (
+                          <div style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)', fontStyle: 'italic' }}>
+                            Loading images...
+                          </div>
+                        ) : incidentImages[r.id].length > 0 ? (
+                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.5rem' }}>
+                            {incidentImages[r.id].map((img) => (
+                              <div 
+                                key={img.id}
+                                style={{ 
+                                  border: '1px solid var(--cui-border-color)', 
+                                  borderRadius: '4px', 
+                                  padding: '0.5rem',
+                                  backgroundColor: 'var(--cui-secondary-bg)',
+                                  cursor: 'pointer',
+                                  transition: 'transform 0.2s'
+                                }}
+                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
+                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  console.log('🖼️ Image clicked:', img)
+                                }}
+                              >
+                                <div style={{ 
+                                  height: '80px', 
+                                  backgroundColor: 'var(--cui-body-bg)',
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  justifyContent: 'center',
+                                  borderRadius: '4px',
+                                  marginBottom: '0.25rem'
+                                }}>
+                                  <span style={{ fontSize: '2rem' }}>🖼️</span>
+                                </div>
+                                <div style={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {img.name}
+                                </div>
+                                <div style={{ fontSize: '0.65rem', color: 'var(--cui-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                                  {img.filePath}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                        ) : (
+                          <div style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)', fontStyle: 'italic' }}>
+                            No images found for this location
+                          </div>
+                        )}
+                        
+                        <CButton 
+                          color="link" 
+                          size="sm"
+                          style={{ marginTop: '0.5rem', padding: 0 }}
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            navigate(`/incidents/${r.id}`)
+                          }}
+                        >
+                          View full details →
+                        </CButton>
+                      </div>
                     </div>
                   </CCollapse>
                 </CTableDataCell>
