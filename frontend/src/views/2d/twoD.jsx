@@ -3,7 +3,8 @@ import { Layer, Map, Source } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import * as turf from "@turf/turf";
 import { CContainer, CButton } from "@coreui/react";
-
+import { useHelpers, useSensors, useVictims } from "../../api/map_api";
+import { useIncidents } from "../../api/incidents_api";
 const TwoD = ({
   containerHeight = "75vh",
   canShowButtons = true,
@@ -20,25 +21,23 @@ const TwoD = ({
   helpersColor = "#007c41",
   route = { distance: 0, route: [] },
 }) => {
-  // const initialCoords = [9.6861753, 50.5652165];
-  const [incidents, setIncidents] = useState();
-  const [sensors, setSensors] = useState();
-  const [helper, setHelper] = useState();
-  const [victims, setVictims] = useState();
   const GEOFENCE = turf.circle(initialCoords, 50, { units: "kilometers" });
   const [selectedId, setSelectedId] = useState();
   const [helpersJson, setHelpersJson] = useState();
   const [sensorsJson, setSensorsJson] = useState();
   const [incidentsJson, setIncidentsJson] = useState();
   const [victimsJson, setVictimsJson] = useState();
-
+  const [wsVictims, setWsVictims] = useState();
+  const [wsSensors, setWsSensors] = useState();
+  const { data: helpersData } = useHelpers();
+  const { data: sensorsData } = useSensors();
+  const { data: victimsData } = useVictims();
+  const { data: incidentsData } = useIncidents();
   const [viewState, setViewState] = useState({
     latitude: initialCoords[1],
     longitude: initialCoords[0],
     zoom: 16,
   });
-
-  const backendURL = "http://192.168.188.23:8000";
   const routeJson = useMemo(() => {
     if (route && route.route && route.route.length > 1) {
       const coords = route.route.map((p) => [p.lon, p.lat]);
@@ -62,69 +61,14 @@ const TwoD = ({
     id: "route-line",
     type: "line",
     paint: {
-      "line-color": "#0000ff", 
+      "line-color": "#0000ff",
       "line-width": 6,
     },
   };
-  useEffect(() => {
-    try {
-      // fetch(`${backendURL}/api/v1/map/sensors`)
-      fetch(`http://192.168.188.21:8080/api/sensors`)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setSensors(data);
-        })
-        .catch((error) => {});
-    } catch {}
-    try {
-      fetch(`${backendURL}/api/v1/map/helpers`)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setHelper([data]);
-        })
-        .catch((error) => {});
-    } catch {}
-    try {
-      fetch(`${backendURL}/api/v1/map/victims`)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setVictims(data);
-        })
-        .catch((error) => {});
-    } catch {}
-    try {
-      fetch(`${backendURL}/api/v1/incidents`)
-        .then((response) => {
-          if (!response.ok) {
-            throw new Error("Network response was not ok");
-          }
-          return response.json();
-        })
-        .then((data) => {
-          setIncidents(data);
-        })
-        .catch((error) => {});
-    } catch {}
-  }, []);
 
   useEffect(() => {
     // Create a WebSocket connection
-    const ws = new WebSocket("ws://192.168.188.21:8080/api/trilaterations/ws");
+    const ws = new WebSocket(`ws://${window.SENSOR_API}/api/trilaterations/ws`);
 
     // When the connection is open
     ws.onopen = () => {
@@ -134,7 +78,7 @@ const TwoD = ({
     // When a message is received
     ws.onmessage = (event) => {
       const data = JSON.parse(event.data);
-      setVictims(data);
+      setWsVictims(data);
     };
 
     // When there is an error
@@ -152,10 +96,42 @@ const TwoD = ({
       ws.close();
     };
   }, []);
+
+  useEffect(() => {
+    // Create a WebSocket connection
+    const ws = new WebSocket(`ws://${window.SENSOR_API}/api/sensor/ws`);
+
+    // When the connection is open
+    ws.onopen = () => {
+      console.log("Connected to WebSocket");
+    };
+
+    // When a message is received
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setWsSensors(data);
+    };
+
+    // When there is an error
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    // When the connection is closed
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    // Cleanup function to close the WebSocket when the component unmounts
+    return () => {
+      ws.close();
+    };
+  }, []);
+
   const circles = useMemo(() => {
-    if (incidents) {
-      if (incidents.length > 0) {
-        const circleFeatures = incidents
+    if (incidentsData) {
+      if (incidentsData.length > 0) {
+        const circleFeatures = incidentsData
           .filter((item) => item.id != selectedId)
           .map((point) =>
             turf.circle([point.lon, point.lat], point.radius, {
@@ -165,13 +141,13 @@ const TwoD = ({
         return turf.featureCollection(circleFeatures);
       }
     }
-  }, [incidents, selectedId]);
+  }, [incidentsData, selectedId]);
 
   useEffect(() => {
-    if (incidents) {
+    if (incidentsData) {
       setIncidentsJson({
         type: "FeatureCollection",
-        features: incidents.map((item) => {
+        features: incidentsData.map((item) => {
           return {
             type: "Feature",
             geometry: { type: "Point", coordinates: [item.lon, item.lat] },
@@ -179,30 +155,35 @@ const TwoD = ({
         }),
       });
     }
-  }, [incidents]);
+  }, [incidentsData]);
 
   useEffect(() => {
-    if (sensors) {
-      setSensorsJson({
-        type: "FeatureCollection",
-        features: sensors.map((item) => {
-          return {
-            type: "Feature",
-            geometry: {
-              type: "Point",
-              coordinates: [item.lon, item.lat],
-            },
-          };
-        }),
-      });
+    let data = [];
+    if (sensorsData) {
+      data = sensorsData;
     }
-  }, [sensors]);
+    if (wsSensors) {
+      data = [...data, wsSensors];
+    }
+    setSensorsJson({
+      type: "FeatureCollection",
+      features: data.map((item) => {
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [item.lon, item.lat],
+          },
+        };
+      }),
+    });
+  }, [sensorsData, wsSensors]);
 
   useEffect(() => {
-    if (helper) {
+    if (helpersData) {
       setHelpersJson({
         type: "FeatureCollection",
-        features: helper.map((item) => {
+        features: helpersData.map((item) => {
           return {
             type: "Feature",
             geometry: { type: "Point", coordinates: [item.lon, item.lat] },
@@ -210,21 +191,27 @@ const TwoD = ({
         }),
       });
     }
-  }, [helper]);
+  }, [helpersData]);
 
   useEffect(() => {
-    if (victims) {
-      setVictimsJson({
-        type: "FeatureCollection",
-        features: victims.map((item) => {
-          return {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [item.lon, item.lat] },
-          };
-        }),
-      });
+    let data = [];
+    if (victimsData) {
+      data = victimsData;
     }
-  }, [victims]);
+    if (wsVictims) {
+      data = [...data, wsVictims];
+    }
+
+    setVictimsJson({
+      type: "FeatureCollection",
+      features: data.map((item) => {
+        return {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [item.lon, item.lat] },
+        };
+      }),
+    });
+  }, [victimsData, wsVictims]);
 
   const onZoom = (e) => {
     if (selectedId != undefined) {
@@ -252,7 +239,7 @@ const TwoD = ({
 
   const handleClick = (e) => {
     let distToPoint = -1;
-    incidents.forEach((item) => {
+    incidentsData.forEach((item) => {
       distToPoint = getDistanceInMeters(
         e.lngLat.lat,
         e.lngLat.lng,
@@ -485,7 +472,7 @@ const TwoD = ({
           <Source
             id="tiff-source"
             type="raster"
-            tiles={["tiles/{z}/{x}/{y}.png"]}
+            tiles={[window.DIFF_API]}
             tileSize={256}
             minzoom={0}
             maxzoom={20}

@@ -126,7 +126,7 @@ const IncidentDetails = () => {
 
   return (
     <div className="d-flex flex-column align-items-center">
-      <div style={{ marginBottom: "1rem", width: "100%", height: "25vh" }}>
+      <div style={{ marginBottom: "1rem", width: "100%", height: "40vh" }}>
         <TwoD
           canShowButtons={false}
           containerHeight="100%"
