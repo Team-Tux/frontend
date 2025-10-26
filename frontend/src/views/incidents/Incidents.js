@@ -141,7 +141,7 @@ export default function TableExample() {
       <div className="controls d-flex flex-wrap gap-3 mb-3 p-3 rounded shadow-sm align-items-end justify-content-between" style={{ backgroundColor: 'var(--cui-body-bg)', border: '1px solid var(--cui-border-color)' }}>
         <div className="d-flex flex-wrap gap-3">
           <div className="block d-flex flex-column me-2">
-            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Show incidents with status:</div>
+            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Status</div>
             <div className="btn-row d-flex gap-2">
             {[
               { label: 'All', value: 'all' },
@@ -165,7 +165,7 @@ export default function TableExample() {
 
 
           <div className="block d-flex flex-column">
-            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Order by:</div>
+            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Order by</div>
             <div className="btn-row d-flex gap-2">
             <button
               type="button"
@@ -193,7 +193,7 @@ export default function TableExample() {
           
 
           <div className="block d-flex flex-column me-2">
-            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Delegated to:</div>
+            <div className="label fw-bold mb-2" style={{ color: 'var(--cui-body-color)' }}>Delegated to</div>
             <div className="btn-row">
             <CDropdown>
               <CDropdownToggle color="secondary" className="btn-sm" >

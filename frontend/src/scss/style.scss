@@ -2,7 +2,7 @@
   $enable-deprecation-messages: false,
 );
 @use "@coreui/chartjs/scss/coreui-chartjs";
-@use "vendors/simplebar";
+
 
 body {
   background-color: var(--cui-tertiary-bg);

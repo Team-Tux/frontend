@@ -1,59 +1,47 @@
-import React from 'react'
-import { useLocation, Link } from 'react-router-dom'
-
-import routes from '../routes'
-
-import { CBreadcrumb, CBreadcrumbItem } from '@coreui/react'
+import React from "react";
+import { useLocation, Link } from "react-router-dom";
+import routes from "../routes";
+import { CBreadcrumb, CBreadcrumbItem } from "@coreui/react";
 
 const AppBreadcrumb = () => {
-  const currentLocation = useLocation().pathname
+  const currentLocation = useLocation().pathname;
 
-  const getRouteName = (pathname, routes) => {
-    const currentRoute = routes.find((route) => route.path === pathname)
-    return currentRoute ? currentRoute.name : false
-  }
+  const getRouteName = (p, rs) => {
+    const r = rs.find((x) => x.path === p);
+    return r ? r.name : false;
+  };
 
-  const getBreadcrumbs = (location) => {
-    const breadcrumbs = []
-    location.split('/').reduce((prev, curr, index, array) => {
-      const currentPathname = `${prev}/${curr}`
-      const routeName = getRouteName(currentPathname, routes)
-      routeName &&
-        breadcrumbs.push({
-          pathname: currentPathname,
-          name: routeName,
-          active: index + 1 === array.length ? true : false,
-        })
-      return currentPathname
-    })
-    return breadcrumbs
-  }
+  const getBreadcrumbs = (loc) => {
+    const out = [];
+    loc.split("/").reduce((prev, curr, i, arr) => {
+      const p = `${prev}/${curr}`;
+      const name = getRouteName(p, routes);
+      if (name) out.push({ pathname: p, name, active: i + 1 === arr.length });
+      return p;
+    });
+    return out;
+  };
 
-  const breadcrumbs = getBreadcrumbs(currentLocation)
+  const crumbs = getBreadcrumbs(currentLocation);
 
   return (
     <CBreadcrumb className="my-0">
       <CBreadcrumbItem>
-        <Link to="/" style={{ textDecoration: 'none', color: 'inherit' }}>Home</Link>
+        <Link to="/" className="text-reset text-decoration-none">Home</Link>
       </CBreadcrumbItem>
-      {breadcrumbs.map((breadcrumb, index) => {
-        return (
-          <CBreadcrumbItem
-            {...(breadcrumb.active ? { active: true } : {})}
-            key={index}
-          >
-            {breadcrumb.active ? (
-              breadcrumb.name
-            ) : (
-              <Link to={breadcrumb.pathname} style={{ textDecoration: 'none', color: 'inherit' }}>
-                {breadcrumb.name}
-              </Link>
-            )}
-          </CBreadcrumbItem>
-        )
-      })}
+      {crumbs.map((b, i) => (
+        <CBreadcrumbItem {...(b.active ? { active: true } : {})} key={i}>
+          {b.active ? (
+            b.name
+          ) : (
+            <Link to={b.pathname} className="text-reset text-decoration-none">
+              {b.name}
+            </Link>
+          )}
+        </CBreadcrumbItem>
+      ))}
     </CBreadcrumb>
-  )
-}
+  );
+};
 
-export default React.memo(AppBreadcrumb)
+export default React.memo(AppBreadcrumb);
