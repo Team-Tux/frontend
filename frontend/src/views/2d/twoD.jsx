@@ -130,20 +130,25 @@ const TwoD = ({
   }, [incidentsData]);
 
   useEffect(() => {
-    if (sensorsData || wsSensors) {
-      setSensorsJson({
-        type: "FeatureCollection",
-        features: [...sensorsData, ...wsSensors].map((item) => {
-          return {
-            type: "Feature",
-            geometry: {
-              type: "Point",
-              coordinates: [item.lon, item.lat],
-            },
-          };
-        }),
-      });
+    let data = [];
+    if (sensorsData) {
+      data = sensorsData;
     }
+    if (wsSensors) {
+      data = [...data, ...wsSensors];
+    }
+    setSensorsJson({
+      type: "FeatureCollection",
+      features: data.map((item) => {
+        return {
+          type: "Feature",
+          geometry: {
+            type: "Point",
+            coordinates: [item.lon, item.lat],
+          },
+        };
+      }),
+    });
   }, [sensorsData, wsSensors]);
 
   useEffect(() => {
@@ -161,17 +166,22 @@ const TwoD = ({
   }, [helpersData]);
 
   useEffect(() => {
-    if (victimsData || wsVictims) {
-      setVictimsJson({
-        type: "FeatureCollection",
-        features: [...victimsData, ...wsVictims].map((item) => {
-          return {
-            type: "Feature",
-            geometry: { type: "Point", coordinates: [item.lon, item.lat] },
-          };
-        }),
-      });
+    let data = [];
+    if (sensorsData) {
+      data = victimsData;
     }
+    if (wsVictims) {
+      data = [...data, ...wsVictims];
+    }
+    setVictimsJson({
+      type: "FeatureCollection",
+      features: data.map((item) => {
+        return {
+          type: "Feature",
+          geometry: { type: "Point", coordinates: [item.lon, item.lat] },
+        };
+      }),
+    });
   }, [victimsData, wsVictims]);
 
   const onZoom = (e) => {
