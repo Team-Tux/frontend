@@ -41,6 +41,3 @@ coverage/
 *.tmp
 *.bak
 
-# CoreUI artifacts
-src/views/pages/
-src/assets/demo/
