@@ -1,148 +1,23 @@
 import React, { useEffect, useState, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { CCard, CCardBody, CCardTitle, CCardText, CButton, CFormInput } from '@coreui/react'
+import { useDelegates } from '../../api/delegates_api'
+import { useIncident, useUpdateStatus } from '../../api/incidents_api'
+import { usePinImage, usePins } from '../../api/pins_api'
 
-export default function IncidentDetails() {
+const IncidentDetails = () => {
   const { id } = useParams()
   const navigate = useNavigate()
-  const [incident, setIncident] = useState(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [existingImages, setExistingImages] = useState([])
-  const [uploadedImages, setUploadedImages] = useState([])
-  const [loadingImages, setLoadingImages] = useState(false)
-  const [delegateMap, setDelegateMap] = useState({}) // Map delegate id to name
   const fileInputRef = useRef(null)
 
-  // Fetch delegates for mapping
-  useEffect(() => {
-    fetch('/api/v1/delegates/', {
-      headers: {
-        'Accept': 'application/json'
-      }
-    })
-      .then(r => r.json())
-      .then(data => {
-        console.log('Fetched delegates from API:', data)
-        const fetchedDelegates = Array.isArray(data) ? data : []
-        
-        // Create a map of id -> name for easy lookup
-        const map = {}
-        fetchedDelegates.forEach(d => {
-          map[d.id] = d.name
-        })
-        setDelegateMap(map)
-      })
-      .catch(err => {
-        console.error('Error fetching delegates:', err)
-      })
-  }, [])
+  const { data: delegates } = useDelegates();
+  const { data: incident } = useIncident(id);
+  const { data: updateStatusResponse, mutate: updateStatus } =
+        useUpdateStatus()
 
-  useEffect(() => {
-    let mounted = true
-    setLoading(true)
-    setError(null)
+  const { data: pins } = usePins()
 
-    fetch(`/api/v1/incidents/${id}`)
-      .then((r) => {
-        if (!r.ok) {
-          throw new Error('Incident not found')
-        }
-        return r.json()
-      })
-      .then((data) => {
-        if (!mounted) return
-        setIncident(data)
-        
-        // Fetch existing images for these coordinates if incident found
-        if (data) {
-          fetchImagesForCoordinates(data.lat, data.lon)
-        }
-      })
-      .catch((err) => {
-        console.error(err)
-        if (!mounted) return
-        setError('Incident not found')
-      })
-      .finally(() => { if (mounted) setLoading(false) })
 
-    return () => { mounted = false }
-  }, [id])
-
-  const fetchImagesForCoordinates = async (lat, lon) => {
-    setLoadingImages(true)
-    console.log('🔍 Fetching existing images for coordinates:', { lat, lon })
-    
-    try {
-      // TODO: Replace with actual API call
-      // const response = await fetch(`/api/images?lat=${lat}&lon=${lon}`)
-      // const images = await response.json()
-      
-      // Mock existing images with file paths (simulating API response)
-      const mockExistingImages = [
-        {
-          id: 'existing-1',
-          name: 'existing_photo_1.jpg',
-          filePath: '/uploads/images/photo_1.jpg', // This will come from API
-          coords: { lat, lon },
-          uploadedAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          source: 'existing'
-        },
-        {
-          id: 'existing-2',
-          name: 'existing_photo_2.jpg',
-          filePath: '/uploads/images/photo_2.jpg', // This will come from API
-          coords: { lat, lon },
-          uploadedAt: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-          source: 'existing'
-        }
-      ]
-      
-      console.log('✅ Found existing images:', mockExistingImages.length)
-      console.log('Existing images data:', mockExistingImages)
-      setExistingImages(mockExistingImages)
-      
-    } catch (error) {
-      console.error('❌ Error fetching images:', error)
-      setExistingImages([])
-    } finally {
-      setLoadingImages(false)
-    }
-  }
-
-  if (loading) return <div>Loading...</div>
-  if (error) return <div style={{ color: 'red' }}>{error}</div>
-  if (!incident) return <div>Incident not found</div>
-
-  // Helper function to get delegate name from id
-  const getDelegateName = (delegateId) => {
-    if (!delegateId) return 'Unassigned'
-    return delegateMap[delegateId] || `ID: ${delegateId}`
-  }
-
-  const updateStatus = (newStatus) => {
-    setIncident((prev) => ({ ...(prev || {}), status: newStatus }))
-    
-    // Send status update to backend (using query parameter)
-    fetch(`/api/v1/incidents/${id}/status?status=${newStatus}`, {
-      method: 'PATCH',
-      headers: {
-        'Accept': 'application/json',
-      },
-    })
-    .then(response => {
-      if (!response.ok) {
-        throw new Error('Failed to update status')
-      }
-      return response.json()
-    })
-    .then(data => {
-      console.log('Successfully updated incident status:', data)
-    })
-    .catch(error => {
-      console.error('Error updating incident status:', error)
-    })
-  }
 
   const handleImageUpload = (e) => {
     const files = e.target.files
@@ -225,8 +100,15 @@ export default function IncidentDetails() {
     console.log('Image removed from list')
   }
 
-  // Combine existing and uploaded images
-  const allImages = [...existingImages, ...uploadedImages]
+  useEffect(()=>{
+    if(updateStatusResponse === undefined) return
+
+    if (updateStatusResponse.status == "done") navigate('/helper')
+  }, [updateStatusResponse])
+
+  if(incident === undefined || delegates === undefined) return 'Loading...'
+
+  const delegatedName = delegates.find(delegate => delegate.id === incident.delegated_to).name
 
   return (
     <div className="d-flex flex-column align-items-center">
@@ -242,7 +124,7 @@ export default function IncidentDetails() {
                 <CButton
                   color="primary"
                   size="sm"
-                  onClick={() => updateStatus('in_progress')}
+                  onClick={() => updateStatus({incidentId: id, newStatus: 'in_progress'})}
                 >
                   Accept
                 </CButton>
@@ -252,7 +134,7 @@ export default function IncidentDetails() {
                   <CButton
                     color="warning"
                     size="sm"
-                    onClick={() => updateStatus('open')}
+                    onClick={() => updateStatus({incidentId: id, newStatus: 'open'})}
                   >
                     Release
                   </CButton>
@@ -260,7 +142,7 @@ export default function IncidentDetails() {
                   <CButton
                     color="success"
                     size="sm"
-                    onClick={() => updateStatus('done')}
+                    onClick={() => updateStatus({incidentId: id, newStatus: 'done'})}
                   >
                    Done 
                   </CButton>
@@ -277,7 +159,7 @@ export default function IncidentDetails() {
           </div>
           <CCardTitle>{incident.title}</CCardTitle>
           <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Status:</b> {incident.status == "in_progress" ? "In Progress": incident.status}</div>
-          <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Delegated to:</b> {getDelegateName(incident.delegated_to)}</div>
+          <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Delegated to:</b> {delegatedName}</div>
           <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Priority:</b> {incident.priority}</div>
           <div style={{ marginBottom: '0.5rem', color: 'var(--cui-body-color)' }}><b>Reported at:</b> {incident.reported_at ? new Date(incident.reported_at).toLocaleString() : '—'}</div>
           <CCardText>{incident.description}</CCardText>
@@ -288,9 +170,6 @@ export default function IncidentDetails() {
             <div style={{ marginTop: '1.5rem', paddingTop: '1.5rem', borderTop: '1px solid var(--cui-border-color)' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1rem' }}>
                 <h5 style={{ margin: 0 }}>📷 Images for this location</h5>
-                <span style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)' }}>
-                  {existingImages.length} existing • {uploadedImages.length} uploaded
-                </span>
               </div>
               
               {/* Upload Button */}
@@ -319,16 +198,16 @@ export default function IncidentDetails() {
               </div>
 
               {/* Loading State */}
-              {loadingImages && (
+              {pins === undefined && (
                 <div style={{ padding: '2rem', textAlign: 'center', color: 'var(--cui-text-secondary)' }}>
                   Loading existing images...
                 </div>
               )}
 
               {/* Display All Images */}
-              {!loadingImages && allImages.length > 0 ? (
+              {pins !== undefined ? (
                 <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '1rem' }}>
-                  {allImages.map((img) => (
+                  {pins.map((img) => (
                     <div 
                       key={img.id} 
                       style={{ 
@@ -375,7 +254,8 @@ export default function IncidentDetails() {
                           marginBottom: '0.5rem'
                         }}>
                           <span style={{ fontSize: '3rem' }}>
-                            {img.source === 'existing' ? '🌍' : '�'}
+                            {/* {img.source === 'existing' ? '🌍' : '�'} */}
+                            <img src={`${window.PIN_API_URL}${img.image_url}`} width="100%" height="100%" />
                           </span>
                         </div>
                         <div style={{ fontWeight: 'bold', fontSize: '0.9rem', marginBottom: '0.25rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
@@ -385,10 +265,10 @@ export default function IncidentDetails() {
                           {img.filePath}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--cui-text-secondary)' }}>
-                          📍 {img.coords.lat}, {img.coords.lon}
+                          📍 {img.lat}, {img.lon}
                         </div>
                         <div style={{ fontSize: '0.75rem', color: 'var(--cui-text-secondary)' }}>
-                          🕒 {new Date(img.uploadedAt).toLocaleString()}
+                          🕒 {new Date(img.created_at).toLocaleString()}
                         </div>
                       </div>
                       
@@ -409,7 +289,7 @@ export default function IncidentDetails() {
                     </div>
                   ))}
                 </div>
-              ) : !loadingImages && (
+              ) : (
                 <div style={{ 
                   padding: '2rem', 
                   textAlign: 'center', 
@@ -427,3 +307,5 @@ export default function IncidentDetails() {
     </div>
   )
 }
+
+export default IncidentDetails

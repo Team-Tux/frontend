@@ -26,7 +26,7 @@ const Login = () => {
   const sendLogin = () => {
     console.log("AHA", email, password);
 
-    axios.post(`${window.API_URL}/api/v1/login/access-token`, {
+    axios.post(`${window.API_URL}/api/v1/login`, {
       username: email,
       password
     }).then((response)=>{

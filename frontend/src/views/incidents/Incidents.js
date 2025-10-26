@@ -532,66 +532,6 @@ export default function TableExample() {
                       <div><b>Reported:</b> {new Date(r.reported_at).toLocaleString()}</div>
                       <div><b>Coords:</b> {r.lat}, {r.lon}</div>
                       
-                      {/* Images Section */}
-                      <div style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--cui-border-color)' }}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.5rem' }}>
-                          <b>📷 Images:</b>
-                          {incidentImages[r.id] && (
-                            <span style={{ fontSize: '0.85rem', color: 'var(--cui-text-secondary)' }}>
-                              {incidentImages[r.id].length} image(s)
-                            </span>
-                          )}
-                        </div>
-                        
-                        {!incidentImages[r.id] ? (
-                          <div style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)', fontStyle: 'italic' }}>
-                            Loading images...
-                          </div>
-                        ) : incidentImages[r.id].length > 0 ? (
-                          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))', gap: '0.5rem' }}>
-                            {incidentImages[r.id].map((img) => (
-                              <div 
-                                key={img.id}
-                                style={{ 
-                                  border: '1px solid var(--cui-border-color)', 
-                                  borderRadius: '4px', 
-                                  padding: '0.5rem',
-                                  backgroundColor: 'var(--cui-secondary-bg)',
-                                  cursor: 'pointer',
-                                  transition: 'transform 0.2s'
-                                }}
-                                onMouseEnter={(e) => e.currentTarget.style.transform = 'scale(1.05)'}
-                                onMouseLeave={(e) => e.currentTarget.style.transform = 'scale(1)'}
-                                onClick={(e) => {
-                                  e.stopPropagation()
-                                  console.log('🖼️ Image clicked:', img)
-                                }}
-                              >
-                                <div style={{ 
-                                  height: '80px', 
-                                  backgroundColor: 'var(--cui-body-bg)',
-                                  display: 'flex',
-                                  alignItems: 'center',
-                                  justifyContent: 'center',
-                                  borderRadius: '4px',
-                                  marginBottom: '0.25rem'
-                                }}>
-                                  <span style={{ fontSize: '2rem' }}>🖼️</span>
-                                </div>
-                                <div style={{ fontSize: '0.7rem', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {img.name}
-                                </div>
-                                <div style={{ fontSize: '0.65rem', color: 'var(--cui-text-secondary)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                                  {img.filePath}
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        ) : (
-                          <div style={{ fontSize: '0.9rem', color: 'var(--cui-text-secondary)', fontStyle: 'italic' }}>
-                            No images found for this location
-                          </div>
-                        )}
                         
                         <CButton 
                           color="link" 
@@ -605,7 +545,6 @@ export default function TableExample() {
                           View full details →
                         </CButton>
                       </div>
-                    </div>
                   </CCollapse>
                 </CTableDataCell>
               </CTableRow>
