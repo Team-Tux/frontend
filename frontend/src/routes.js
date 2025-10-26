@@ -8,6 +8,7 @@ import threeD from './views/3d/testthreeD';
 const ThreeDMap = React.lazy(() => import('./views/3d/ThreeDMap'))
 const incidents = React.lazy(() => import('./views/incidents/Incidents'))
 const CreateIncident = React.lazy(() => import('./views/incidents/CreateIncident'))
+const IncidentDetails = React.lazy(() => import('./views/incidents/IncidentDetails'))
 
 const Colors = React.lazy(() => import("./views/theme/colors/Colors"));
 const Typography = React.lazy(
@@ -91,6 +92,7 @@ const routes = [
   { path: "/2d", name: "2D", element: TwoD },
   { path: "/3d", name: "3D", element: ThreeDMap },
   { path: '/incidents/create', name: 'Create Incident', element: CreateIncident },
+  { path: '/incidents/:id', name: 'Incident Details', element: IncidentDetails },
   { path: '/helper', name: 'Helper', element: helper },
   { path: "/theme", name: "Theme", element: Colors, exact: true },
   { path: "/theme/colors", name: "Colors", element: Colors },
