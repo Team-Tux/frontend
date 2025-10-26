@@ -12,6 +12,12 @@ import { useDelegates } from "../../api/delegates_api";
 import { useIncident, useUpdateStatus } from "../../api/incidents_api";
 import { usePins, usePinUpload } from "../../api/pins_api";
 import TwoD from "../2d/twoD";
+import { useCalculateDirections } from "../../api/directions_api";
+
+const rescueStation = {
+  lat: 50.546915949525875,
+  lon: 9.70607041886039
+}
 
 const IncidentDetails = () => {
   const { id } = useParams();
@@ -25,6 +31,7 @@ const IncidentDetails = () => {
 
   const { data: pins, refetch: reloadPins } = usePins();
   const { data: uploadPinRespose, mutate: uploadPin } = usePinUpload();
+  const { data: calculateDirectionsResponse, mutate: calculateDirections } = useCalculateDirections()
 
   const handleImageUpload = (e) => {
     const files = e.target.files;
@@ -104,6 +111,13 @@ const IncidentDetails = () => {
     
   }, [uploadPinRespose]);
 
+  useEffect(()=>{
+    if(calculateDirectionsResponse===undefined) return
+
+    console.log("calculateDirectionsResponse", calculateDirectionsResponse);
+    
+  }, [calculateDirectionsResponse])
+
   if (incident === undefined || delegates === undefined) return "Loading...";
 
   const delegatedName = delegates.find(
@@ -169,6 +183,7 @@ const IncidentDetails = () => {
                     color="danger"
                     size="sm"
                     // toDo: call philipps api and show the best way for the ambulance
+                    onClick={()=>calculateDirections({startLat: rescueStation.lat, startLon: rescueStation.lon, endLat: incident.lat, endLon: incident.lon})}
                   >
                     Send Ambulance
                   </CButton>

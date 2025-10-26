@@ -18,7 +18,7 @@ const Page404 = React.lazy(() => import('./views/pages/page404/Page404'))
 const Page500 = React.lazy(() => import('./views/pages/page500/Page500'))
 
 const App = () => {
-  const { isColorModeSet, setColorMode } = useColorModes("cerebro-theme");
+  const { isColorModeSet, setColorMode } = useColorModes("guardian-theme");
   const storedTheme = useSelector((s) => s.theme);
 
   // add the API token to the axios config so that we dont have to add it to every request
