@@ -8,10 +8,10 @@ const TwoD = ({
   initialCoords = [9.6861753, 50.5652165],
   destructionOpacity = 0.55,
   circleOpacity = 0.15,
-  victimSize = 5,
-  helperSize = 5,
-  sensorSize = 5,
-  incidentSize = 5,
+  victimSize = 10,
+  helperSize = 10,
+  sensorSize = 10,
+  incidentSize = 10,
   victimsColor = "#ff0000ff",
   sensorsColor = "#007cf1",
   incidentsColor = "#fafa20ff",
@@ -39,7 +39,8 @@ const TwoD = ({
 
   useEffect(() => {
     try {
-      fetch(`${backendURL}/api/v1/map/sensors`)
+      // fetch(`${backendURL}/api/v1/map/sensors`)
+      fetch(`http://192.168.188.21:8080/api/sensors`)
         .then((response) => {
           if (!response.ok) {
             throw new Error("Network response was not ok");
@@ -60,7 +61,7 @@ const TwoD = ({
           return response.json();
         })
         .then((data) => {
-          setHelper(data);
+          setHelper([data]);
         })
         .catch((error) => {});
     } catch {}
@@ -337,23 +338,13 @@ const TwoD = ({
             setLayerVisibility((prev) => ({
               ...prev,
               incidents: !prev.incidents,
+              circles: !prev.circles,
             }))
           }
         >
           {layerVisibility.incidents ? "Hide Incidents" : "Show Incidents"}
         </CButton>
-        <CButton
-          size="lg"
-          style={{
-            background: incidentsColor,
-            color: "black",
-          }}
-          onClick={() =>
-            setLayerVisibility((prev) => ({ ...prev, circles: !prev.circles }))
-          }
-        >
-          {layerVisibility.circles ? "Hide Circles" : "Show Circles"}
-        </CButton>
+
         <CButton
           size="lg"
           style={{
