@@ -18,6 +18,7 @@ const TwoD = ({
   sensorsColor = "#007cf1",
   incidentsColor = "#fafa20ff",
   helpersColor = "#007c41",
+  route = { distance: 0, route: [] },
 }) => {
   // const initialCoords = [9.6861753, 50.5652165];
   const [incidents, setIncidents] = useState();
@@ -38,7 +39,33 @@ const TwoD = ({
   });
 
   const backendURL = "http://192.168.188.23:8000";
+  const routeJson = useMemo(() => {
+    if (route && route.route && route.route.length > 1) {
+      const coords = route.route.map((p) => [p.lon, p.lat]);
+      return {
+        type: "FeatureCollection",
+        features: [
+          {
+            type: "Feature",
+            geometry: {
+              type: "LineString",
+              coordinates: coords,
+            },
+          },
+        ],
+      };
+    }
+    return null;
+  }, [route]);
 
+  const routeLayer = {
+    id: "route-line",
+    type: "line",
+    paint: {
+      "line-color": "#0000ff", 
+      "line-width": 6,
+    },
+  };
   useEffect(() => {
     try {
       // fetch(`${backendURL}/api/v1/map/sensors`)
@@ -448,6 +475,12 @@ const TwoD = ({
             <Layer {...layerStyleHelper} />
           </Source>
         )}
+        {routeJson && (
+          <Source id="route" type="geojson" data={routeJson}>
+            <Layer {...routeLayer} />
+          </Source>
+        )}
+
         {layerVisibility.destruction && (
           <Source
             id="tiff-source"

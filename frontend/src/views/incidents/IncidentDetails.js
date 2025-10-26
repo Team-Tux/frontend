@@ -131,6 +131,7 @@ const IncidentDetails = () => {
           canShowButtons={false}
           containerHeight="100%"
           initialCoords={[incident.lon, incident.lat]}
+          route = {calculateDirectionsResponse}
         />
       </div>
       <CCard style={{ width: "48rem", marginBottom: "2rem" }}>
