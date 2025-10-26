@@ -2,35 +2,87 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { Layer, Map, Source } from "@vis.gl/react-maplibre";
 import "maplibre-gl/dist/maplibre-gl.css";
 import * as turf from "@turf/turf";
-import { CContainer } from "@coreui/react";
+import { CContainer, CButton } from "@coreui/react";
 
-const TwoD = ({}) => {
-  const initialCoords = [9.6861753, 50.5652165];
-  const [points, setPoints] = useState([
-    { id: 0, cord: [9.6861753, 50.5652165], radius: 30 },
-    { id: 1, cord: [9.704481903105375, 50.561469999275005], radius: 60 },
-  ]);
-  const [sensors, setSensors] = useState([
-    { type: "TEST", cord: [9.685875926986967, 50.56519975931357] },
-    { type: "TEST", cord: [9.686164571163602, 50.56560835807784] },
-    { type: "TEST", cord: [9.686414016601816, 50.56518753644707] },
-  ]);
-  const [helper, setHelper] = useState([
-    { id: 1, cord: [9.686156524537353, 50.56509212697179] },
-    { id: 2, cord: [9.686261130688592, 50.56505123713765] },
-    { id: 3, cord: [9.686304046032888, 50.5650324959515] },
-  ]);
-  const GEOFENCE = turf.circle(initialCoords, 15, { units: "miles" });
+const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
+  // const initialCoords = [9.6861753, 50.5652165];
+  const [points, setPoints] = useState();
+  const [sensors, setSensors] = useState();
+  const [helper, setHelper] = useState();
+  const [victims, setVictims] = useState();
+  const GEOFENCE = turf.circle(initialCoords, 50, { units: "kilometers" });
   const [selectedId, setSelectedId] = useState();
   const [helpersJson, setHelpersJson] = useState();
   const [sensorsJson, setSensorsJson] = useState();
   const [incidentsJson, setIncidentsJson] = useState();
+  const [victimsJson, setVictimsJson] = useState();
 
   const [viewState, setViewState] = useState({
     latitude: initialCoords[1],
     longitude: initialCoords[0],
-    zoom: 18,
+    zoom: 16,
   });
+
+  const backendURL = "http://192.168.188.23:8000";
+
+  useEffect(() => {
+    try {
+      fetch(`${backendURL}/api/v1/map/sensors`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log(data);
+          setSensors(data);
+        })
+        .catch((error) => {});
+    } catch {}
+    try {
+      fetch(`${backendURL}/api/v1/map/helpers`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log(data);
+          setHelper(data);
+        })
+        .catch((error) => {});
+    } catch {}
+    try {
+      fetch(`${backendURL}/api/v1/map/victims`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log(data);
+          setVictims(data);
+        })
+        .catch((error) => {});
+    } catch {}
+    try {
+      fetch(`${backendURL}/api/v1/incidents`)
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log(data);
+          setSensors(data);
+        })
+        .catch((error) => {});
+    } catch {}
+  }, []);
 
   const circles = useMemo(() => {
     const circleFeatures = points
@@ -41,6 +93,65 @@ const TwoD = ({}) => {
     return turf.featureCollection(circleFeatures);
   }, [points, selectedId]);
 
+  useEffect(() => {
+    if (points) {
+      setIncidentsJson({
+        type: "FeatureCollection",
+        features: points.map((item) => {
+          return {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [item.lon, item.lat] },
+          };
+        }),
+      });
+    }
+  }, [points]);
+
+  useEffect(() => {
+    if (sensors) {
+      setSensorsJson({
+        type: "FeatureCollection",
+        features: sensors.map((item) => {
+          return {
+            type: "Feature",
+            geometry: {
+              type: "Point",
+              coordinates: [item.lon, item.lat],
+            },
+          };
+        }),
+      });
+    }
+  }, [sensors]);
+
+  useEffect(() => {
+    if (helper) {
+      setHelpersJson({
+        type: "FeatureCollection",
+        features: helper.map((item) => {
+          return {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [item.lon, item.lat] },
+          };
+        }),
+      });
+    }
+  }, [helper]);
+
+  useEffect(() => {
+    if (victims) {
+      setVictimsJson({
+        type: "FeatureCollection",
+        features: victims.map((item) => {
+          return {
+            type: "Feature",
+            geometry: { type: "Point", coordinates: [item.lon, item.lat] },
+          };
+        }),
+      });
+    }
+  }, [victims]);
+
   const onZoom = (e) => {
     console.log(e.viewState);
     if (selectedId != undefined) {
@@ -50,43 +161,6 @@ const TwoD = ({}) => {
     }
   };
 
-  useEffect(() => {
-    setIncidentsJson({
-      type: "FeatureCollection",
-      features: points.map((item) => {
-        return {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: item.cord },
-        };
-      }),
-    });
-  }, [points]);
-
-  useEffect(() => {
-    setSensorsJson({
-      type: "FeatureCollection",
-      features: sensors.map((item) => {
-        return {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: item.cord },
-        };
-      }),
-    });
-  }, [sensors]);
-
-  useEffect(() => {
-    setHelpersJson({
-      type: "FeatureCollection",
-      features: helper.map((item) => {
-        return {
-          type: "Feature",
-          geometry: { type: "Point", coordinates: item.cord },
-        };
-      }),
-    });
-  }, [helper]);
-
-  // console.log("geojson", geojson);
   const getDistanceInMeters = (lat1, lon1, lat2, lon2) => {
     const R = 6371e3; // Earth's radius in meters
     const φ1 = (lat1 * Math.PI) / 180;
@@ -102,6 +176,7 @@ const TwoD = ({}) => {
 
     return R * c; // distance in meters
   };
+
   const handleClick = (e) => {
     let distToPoint = -1;
     points.forEach((item) => {
@@ -130,12 +205,21 @@ const TwoD = ({}) => {
       }
     });
   };
+
   const layerStylePoints = {
     id: "point",
     type: "circle",
     paint: {
       "circle-radius": 13,
-      "circle-color": "#f33c11",
+      "circle-color": "#fafa20ff",
+    },
+  };
+  const layerStyleVictims = {
+    id: "victim",
+    type: "circle",
+    paint: {
+      "circle-radius": 13,
+      "circle-color": "#ff0000ff",
     },
   };
   const layerStyleSensors = {
@@ -155,22 +239,20 @@ const TwoD = ({}) => {
     },
   };
 
-  // Transparent circle (fill)
   const circleFillLayer = {
     id: "circle-fill",
     type: "fill",
     paint: {
-      "fill-color": "#f33c11",
-      "fill-opacity": 0.15, // transparent
+      "fill-color": "#fafa20ff",
+      "fill-opacity": 0.15,
     },
   };
 
-  // Circle border (outline)
   const circleOutlineLayer = {
     id: "circle-outline",
     type: "line",
     paint: {
-      "line-color": "#f33c11",
+      "line-color": "#fafa20ff",
       "line-width": 2,
     },
   };
@@ -178,7 +260,6 @@ const TwoD = ({}) => {
     ({ viewState }) => {
       const newCenter = [viewState.longitude, viewState.latitude];
       if (turf.booleanPointInPolygon(newCenter, GEOFENCE)) {
-        // console.log("Inside geofence");
         setViewState({
           ...viewState,
           longitude: newCenter[0],
@@ -193,39 +274,97 @@ const TwoD = ({}) => {
     sensors: true,
     helpers: true,
     circles: true,
+    destruction: true,
+    victims: true,
   });
 
   return (
-    <CContainer style={{ width: "100%", height: "80vh" }}>
-      <div style={{ display: "flex", gap: "10px", marginBottom: "10px" }}>
-        <button
+    <CContainer style={{ width: "100%", height: "75vh" }}>
+      <div
+        className="d-flex justify-content-between"
+        style={{ display: "flex", gap: "10px", marginBottom: "10px" }}
+      >
+        <CButton
+          size="lg"
+          style={{
+            background: layerStylePoints.paint["circle-color"],
+            color: "black",
+          }}
           onClick={() =>
             setLayerVisibility((prev) => ({ ...prev, points: !prev.points }))
           }
         >
           {layerVisibility.points ? "Hide Points" : "Show Points"}
-        </button>
-        <button
-          onClick={() =>
-            setLayerVisibility((prev) => ({ ...prev, sensors: !prev.sensors }))
-          }
-        >
-          {layerVisibility.sensors ? "Hide Sensors" : "Show Sensors"}
-        </button>
-        <button
-          onClick={() =>
-            setLayerVisibility((prev) => ({ ...prev, helpers: !prev.helpers }))
-          }
-        >
-          {layerVisibility.helpers ? "Hide Helpers" : "Show Helpers"}
-        </button>
-        <button
+        </CButton>
+        <CButton
+          size="lg"
+          style={{
+            background: layerStylePoints.paint["circle-color"],
+            color: "black",
+          }}
           onClick={() =>
             setLayerVisibility((prev) => ({ ...prev, circles: !prev.circles }))
           }
         >
           {layerVisibility.circles ? "Hide Circles" : "Show Circles"}
-        </button>
+        </CButton>
+        <CButton
+          size="lg"
+          style={{
+            background: layerStyleSensors.paint["circle-color"],
+            color: "black",
+          }}
+          onClick={() =>
+            setLayerVisibility((prev) => ({ ...prev, sensors: !prev.sensors }))
+          }
+        >
+          {layerVisibility.sensors ? "Hide Sensors" : "Show Sensors"}
+        </CButton>
+        <CButton
+          size="lg"
+          style={{
+            background: layerStyleHelper.paint["circle-color"],
+            color: "black",
+          }}
+          onClick={() =>
+            setLayerVisibility((prev) => ({ ...prev, helpers: !prev.helpers }))
+          }
+        >
+          {layerVisibility.helpers ? "Hide Helpers" : "Show Helpers"}
+        </CButton>
+
+        <CButton
+          size="lg"
+          color="secondary"
+          style={{
+            color: "black",
+          }}
+          onClick={() =>
+            setLayerVisibility((prev) => ({
+              ...prev,
+              destruction: !prev.destruction,
+            }))
+          }
+        >
+          {layerVisibility.destruction
+            ? "Hide Destruction"
+            : "Show Destruction"}
+        </CButton>
+        <CButton
+          size="lg"
+          style={{
+            background: layerStyleVictims.paint["circle-color"],
+            color: "black",
+          }}
+          onClick={() =>
+            setLayerVisibility((prev) => ({
+              ...prev,
+              victims: !prev.victims,
+            }))
+          }
+        >
+          {layerVisibility.victims ? "Hide Victims" : "Show Victims"}
+        </CButton>
       </div>
       <Map
         {...viewState}
@@ -253,10 +392,31 @@ const TwoD = ({}) => {
             <Layer {...layerStyleSensors} />
           </Source>
         )}
+        {layerVisibility.victims && (
+          <Source id="victims" type="geojson" data={victimsJson}>
+            <Layer {...layerStyleVictims} />
+          </Source>
+        )}
 
         {layerVisibility.helpers && (
           <Source id="helpers" type="geojson" data={helpersJson}>
             <Layer {...layerStyleHelper} />
+          </Source>
+        )}
+        {layerVisibility.destruction && (
+          <Source
+            id="tiff-source"
+            type="raster"
+            tiles={["tiles/{z}/{x}/{y}.png"]}
+            tileSize={256}
+            minzoom={0}
+            maxzoom={20}
+          >
+            <Layer
+              id="tiff-layer"
+              type="raster"
+              paint={{ "raster-opacity": 0.55 }}
+            />
           </Source>
         )}
       </Map>
