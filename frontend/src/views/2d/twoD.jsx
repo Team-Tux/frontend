@@ -4,9 +4,21 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import * as turf from "@turf/turf";
 import { CContainer, CButton } from "@coreui/react";
 
-const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
+const TwoD = ({
+  initialCoords = [9.6861753, 50.5652165],
+  destructionOpacity = 0.55,
+  circleOpacity = 0.15,
+  victimSize = 5,
+  helperSize = 5,
+  sensorSize = 5,
+  incidentSize = 5,
+  victimsColor = "#ff0000ff",
+  sensorsColor = "#007cf1",
+  incidentsColor = "#fafa20ff",
+  helpersColor = "#007c41",
+}) => {
   // const initialCoords = [9.6861753, 50.5652165];
-  const [points, setPoints] = useState();
+  const [incidents, setIncidents] = useState();
   const [sensors, setSensors] = useState();
   const [helper, setHelper] = useState();
   const [victims, setVictims] = useState();
@@ -35,7 +47,6 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
           return response.json();
         })
         .then((data) => {
-          console.log(data);
           setSensors(data);
         })
         .catch((error) => {});
@@ -49,7 +60,6 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
           return response.json();
         })
         .then((data) => {
-          console.log(data);
           setHelper(data);
         })
         .catch((error) => {});
@@ -63,7 +73,6 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
           return response.json();
         })
         .then((data) => {
-          console.log(data);
           setVictims(data);
         })
         .catch((error) => {});
@@ -77,27 +86,62 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
           return response.json();
         })
         .then((data) => {
-          console.log(data);
-          setSensors(data);
+          setIncidents(data);
         })
         .catch((error) => {});
     } catch {}
   }, []);
 
+  useEffect(() => {
+    // Create a WebSocket connection
+    const ws = new WebSocket("ws://192.168.188.21:8080/api/trilaterations/ws");
+
+    // When the connection is open
+    ws.onopen = () => {
+      console.log("Connected to WebSocket");
+    };
+
+    // When a message is received
+    ws.onmessage = (event) => {
+      const data = JSON.parse(event.data);
+      setVictims(data);
+    };
+
+    // When there is an error
+    ws.onerror = (error) => {
+      console.error("WebSocket error:", error);
+    };
+
+    // When the connection is closed
+    ws.onclose = () => {
+      console.log("WebSocket connection closed");
+    };
+
+    // Cleanup function to close the WebSocket when the component unmounts
+    return () => {
+      ws.close();
+    };
+  }, []);
   const circles = useMemo(() => {
-    const circleFeatures = points
-      .filter((item) => item.id != selectedId)
-      .map((point) =>
-        turf.circle(point.cord, point.radius, { units: "meters" }),
-      );
-    return turf.featureCollection(circleFeatures);
-  }, [points, selectedId]);
+    if (incidents) {
+      if (incidents.length > 0) {
+        const circleFeatures = incidents
+          .filter((item) => item.id != selectedId)
+          .map((point) =>
+            turf.circle([point.lon, point.lat], point.radius, {
+              units: "meters",
+            }),
+          );
+        return turf.featureCollection(circleFeatures);
+      }
+    }
+  }, [incidents, selectedId]);
 
   useEffect(() => {
-    if (points) {
+    if (incidents) {
       setIncidentsJson({
         type: "FeatureCollection",
-        features: points.map((item) => {
+        features: incidents.map((item) => {
           return {
             type: "Feature",
             geometry: { type: "Point", coordinates: [item.lon, item.lat] },
@@ -105,7 +149,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
         }),
       });
     }
-  }, [points]);
+  }, [incidents]);
 
   useEffect(() => {
     if (sensors) {
@@ -153,7 +197,6 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
   }, [victims]);
 
   const onZoom = (e) => {
-    console.log(e.viewState);
     if (selectedId != undefined) {
       if (e.viewState.zoom < 17) {
         setSelectedId();
@@ -179,12 +222,12 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
 
   const handleClick = (e) => {
     let distToPoint = -1;
-    points.forEach((item) => {
+    incidents.forEach((item) => {
       distToPoint = getDistanceInMeters(
         e.lngLat.lat,
         e.lngLat.lng,
-        item.cord[1],
-        item.cord[0],
+        item.lat,
+        item.lon,
       );
       let radiusToCompare = item.radius;
       if (viewState.zoom < 14) {
@@ -196,8 +239,8 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
       if (distToPoint < radiusToCompare) {
         if (selectedId != item.id) {
           setViewState({
-            latitude: item.cord[1],
-            longitude: item.cord[0],
+            latitude: item.lat,
+            longitude: item.lon,
             zoom: 18,
           });
           setSelectedId(item.id);
@@ -206,36 +249,36 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
     });
   };
 
-  const layerStylePoints = {
+  const layerStyleIncidents = {
     id: "point",
     type: "circle",
     paint: {
-      "circle-radius": 13,
-      "circle-color": "#fafa20ff",
+      "circle-radius": incidentSize,
+      "circle-color": incidentsColor,
     },
   };
   const layerStyleVictims = {
     id: "victim",
     type: "circle",
     paint: {
-      "circle-radius": 13,
-      "circle-color": "#ff0000ff",
+      "circle-radius": victimSize,
+      "circle-color": victimsColor,
     },
   };
   const layerStyleSensors = {
     id: "sensor",
     type: "circle",
     paint: {
-      "circle-radius": 8,
-      "circle-color": "#007cf1",
+      "circle-radius": sensorSize,
+      "circle-color": sensorsColor,
     },
   };
   const layerStyleHelper = {
     id: "helper",
     type: "circle",
     paint: {
-      "circle-radius": 5,
-      "circle-color": "#007c41",
+      "circle-radius": helperSize,
+      "circle-color": helpersColor,
     },
   };
 
@@ -243,8 +286,8 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
     id: "circle-fill",
     type: "fill",
     paint: {
-      "fill-color": "#fafa20ff",
-      "fill-opacity": 0.15,
+      "fill-color": incidentsColor,
+      "fill-opacity": circleOpacity,
     },
   };
 
@@ -252,7 +295,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
     id: "circle-outline",
     type: "line",
     paint: {
-      "line-color": "#fafa20ff",
+      "line-color": incidentsColor,
       "line-width": 2,
     },
   };
@@ -270,7 +313,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
     [GEOFENCE],
   );
   const [layerVisibility, setLayerVisibility] = useState({
-    points: true,
+    incidents: true,
     sensors: true,
     helpers: true,
     circles: true,
@@ -287,19 +330,22 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
         <CButton
           size="lg"
           style={{
-            background: layerStylePoints.paint["circle-color"],
+            background: incidentsColor,
             color: "black",
           }}
           onClick={() =>
-            setLayerVisibility((prev) => ({ ...prev, points: !prev.points }))
+            setLayerVisibility((prev) => ({
+              ...prev,
+              incidents: !prev.incidents,
+            }))
           }
         >
-          {layerVisibility.points ? "Hide Points" : "Show Points"}
+          {layerVisibility.incidents ? "Hide Incidents" : "Show Incidents"}
         </CButton>
         <CButton
           size="lg"
           style={{
-            background: layerStylePoints.paint["circle-color"],
+            background: incidentsColor,
             color: "black",
           }}
           onClick={() =>
@@ -311,7 +357,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
         <CButton
           size="lg"
           style={{
-            background: layerStyleSensors.paint["circle-color"],
+            background: sensorsColor,
             color: "black",
           }}
           onClick={() =>
@@ -323,7 +369,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
         <CButton
           size="lg"
           style={{
-            background: layerStyleHelper.paint["circle-color"],
+            background: helpersColor,
             color: "black",
           }}
           onClick={() =>
@@ -353,7 +399,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
         <CButton
           size="lg"
           style={{
-            background: layerStyleVictims.paint["circle-color"],
+            background: victimsColor,
             color: "black",
           }}
           onClick={() =>
@@ -381,9 +427,9 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
           </Source>
         )}
 
-        {layerVisibility.points && (
-          <Source id="points" type="geojson" data={incidentsJson}>
-            <Layer {...layerStylePoints} />
+        {layerVisibility.incidents && incidentsJson && (
+          <Source id="incidents" type="geojson" data={incidentsJson}>
+            <Layer {...layerStyleIncidents} />
           </Source>
         )}
 
@@ -415,7 +461,7 @@ const TwoD = ({ initialCoords = [9.6861753, 50.5652165] }) => {
             <Layer
               id="tiff-layer"
               type="raster"
-              paint={{ "raster-opacity": 0.55 }}
+              paint={{ "raster-opacity": destructionOpacity }}
             />
           </Source>
         )}
